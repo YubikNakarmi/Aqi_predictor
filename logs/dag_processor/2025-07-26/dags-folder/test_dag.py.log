@@ -1,0 +1,159 @@
+{"timestamp":"2025-07-26T14:20:01.464732","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:20:02.869573","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"KeyError","exc_value":"'stime'","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":24,"name":"<module>"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":19,"name":"load_data"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:20:34.676547","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:20:35.440896","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"KeyError","exc_value":"'stime'","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":24,"name":"<module>"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":19,"name":"load_data"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:20:47.141005","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:20:47.203322","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:21:17.926137","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:21:17.965186","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:21:48.696169","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:21:48.725745","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:22:18.864850","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:22:18.901973","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:22:49.159559","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:22:49.195995","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:23:19.538858","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:23:19.563768","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:23:49.956344","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:23:50.021514","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:24:20.880267","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:24:20.923990","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:24:51.887950","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:24:51.929160","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:25:22.154624","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:25:22.184278","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"ImportError","exc_value":"cannot import name 'PythonOperator' from 'airflow.operators' (/home/airflow/.local/lib/python3.12/site-packages/airflow/operators/__init__.py)","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":7,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:25:50.867699","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:25:51.974098Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.974963Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.975493Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.976225Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.976750Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.977391Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.978316Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.979044Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.979663Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.980868Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.981669Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.982869Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.983593Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.984073Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.984731Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.985515Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.986076Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.986489Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.987146Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.987824Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.988357Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:25:51.975255","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"TypeError","exc_value":"DAG.__init__() got an unexpected keyword argument 'schedule_interval'","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":25,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:26:22.215943","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:26:22.886938Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.888047Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.888690Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.889479Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.890036Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.890445Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.890908Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.891819Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.892865Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.893412Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.894043Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.894763Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.895529Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.896033Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.896723Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.897203Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.897926Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.898578Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.899210Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.899762Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.900393Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:22.887582","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"TypeError","exc_value":"DAG.__init__() got an unexpected keyword argument 'schedule_interval'","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":25,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:26:53.228955","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:26:54.021641Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.022389Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.023356Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.024428Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.026104Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.027050Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.027586Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.028395Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.029008Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.029453Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.029944Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.030612Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.031084Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.031485Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.031913Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.032433Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.032787Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.033163Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.033546Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.033956Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.034384Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:26:54.011420","level":"error","event":"Failed to import: /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag","error_detail":[{"exc_type":"TypeError","exc_value":"DAG.__init__() got an unexpected keyword argument 'schedule_interval'","exc_notes":[],"syntax_error":null,"is_cause":false,"frames":[{"filename":"/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py","lineno":394,"name":"parse"},{"filename":"<frozen importlib._bootstrap_external>","lineno":999,"name":"exec_module"},{"filename":"<frozen importlib._bootstrap>","lineno":488,"name":"_call_with_frames_removed"},{"filename":"/opt/airflow/dags/test_dag.py","lineno":25,"name":"<module>"}],"is_group":false,"exceptions":[]}]}
+{"timestamp":"2025-07-26T14:27:10.380977","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:27:11.200135Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.202083Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.207998Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.208935Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.210021Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.210546Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.211138Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.211980Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.212628Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.213200Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.213737Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.214295Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.214767Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.215396Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.216368Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.217035Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.217634Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.218213Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.218782Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.219368Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:11.219890Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:41.693981","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:27:42.548804Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.549734Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.552536Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.553222Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.553803Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.554502Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.555011Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.555730Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.556167Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.556923Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.557469Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.557868Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.558161Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.558506Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.558937Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.559400Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.559712Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.560148Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.560481Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.561079Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:27:42.561433Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.023865","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-26T14:28:13.887114Z","level":"info","event":"Shankapark, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.889851Z","level":"info","event":"Dhangadhi, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.891257Z","level":"info","event":"Hetauda, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.892076Z","level":"info","event":"Birendra School, Bhaktapur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.893861Z","level":"info","event":"Khumaltar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.894889Z","level":"info","event":"Nepalgunj, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.895994Z","level":"info","event":"GBS, Pkr, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.897174Z","level":"info","event":"Bhaisipati, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.897864Z","level":"info","event":"Janakpur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.898506Z","level":"info","event":"Dhankuta, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.899191Z","level":"info","event":"Dhulikhel, Kavre, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.899821Z","level":"info","event":"US Embassy, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.900968Z","level":"info","event":"US Embassy, Phora Durbar, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.901812Z","level":"info","event":"Bhimdatta (Mahendranagar), Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.902898Z","level":"info","event":"TU Kritipur, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.903540Z","level":"info","event":"Ratnapark, Kathmandu, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.904149Z","level":"info","event":"Jhumka, Sunsari, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.904820Z","level":"info","event":"Biratnagar, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.905419Z","level":"info","event":"Shankha Park, KTM, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.906581Z","level":"info","event":"Gandaki Boarding School, PKR, Nepal","chan":"stdout","logger":"processor"}
+{"timestamp":"2025-07-26T14:28:13.907860Z","level":"info","event":"DHM Pokhara, Nepal","chan":"stdout","logger":"processor"}

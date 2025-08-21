@@ -1,0 +1,12 @@
+{"timestamp":"2025-08-04T16:46:28.518748","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager"}
+{"timestamp":"2025-08-04T16:46:28.525069","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/test_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-08-04T16:46:29.819734Z","level":"info","event":"Task instance is in running state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:29.821095Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:29.822126Z","level":"info","event":"Current task name:load_aqi_data","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:29.822873Z","level":"info","event":"Dag name:aqi_data_dag","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:30.850773Z","level":"info","event":"data loaded successfully","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:30.867809Z","level":"info","event":"Data saved successfully.","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:30.870356","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator"}
+{"timestamp":"2025-08-04T16:46:30.926554Z","level":"info","event":"Task instance in success state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:30.927968Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-04T16:46:30.928998Z","level":"info","event":"Task operator:<Task(PythonOperator): load_aqi_data>","chan":"stdout","logger":"task"}

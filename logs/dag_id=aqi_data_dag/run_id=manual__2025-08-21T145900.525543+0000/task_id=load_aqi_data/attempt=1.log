@@ -1,0 +1,11 @@
+{"timestamp":"2025-08-21T14:59:03.379216","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager"}
+{"timestamp":"2025-08-21T14:59:03.381118","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/data_ingestion_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-08-21T14:59:03.476594Z","level":"info","event":"Task instance is in running state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:03.477574Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:03.478268Z","level":"info","event":"Current task name:load_aqi_data","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:03.479372Z","level":"info","event":"Dag name:aqi_data_dag","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:04.308620Z","level":"info","event":"Error saving data: No columns to parse from file","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:04.311422","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator"}
+{"timestamp":"2025-08-21T14:59:04.388868Z","level":"info","event":"Task instance in success state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:04.396108Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","chan":"stdout","logger":"task"}
+{"timestamp":"2025-08-21T14:59:04.397035Z","level":"info","event":"Task operator:<Task(PythonOperator): load_aqi_data>","chan":"stdout","logger":"task"}
