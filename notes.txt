@@ -1,0 +1,4 @@
+docker build -t data_ingestion:latest -f scripts/ingestion.dockerfile .
+
+set PIPELINE_DATA=D:/pypipeline/data # set environment variable for mount
+export PIPELINE_DATA=/home/user/pypipeline/data

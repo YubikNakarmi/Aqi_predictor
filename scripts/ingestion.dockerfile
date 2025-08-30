@@ -1,12 +1,12 @@
 FROM python:3.9-slim-bullseye
 
-ARG wkdir=/opt/airflow/scripts
-
-WORKDIR ${wkdir}
+WORKDIR /opt/airflow
+COPY /scripts/ingestion.py ingestion.py
+COPY /data /opt/airflow/data
 
 RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && apt-get autoremove -y && apt-get clean
 RUN pip install --upgrade pip
 RUN pip install pandas requests
 
-COPY ./scripts/ingestion.py ${wkdir}/ingestion.py
-CMD ["python", "ingestion.py "]
+
+CMD ["python", "ingestion.py"]

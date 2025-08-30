@@ -3,9 +3,11 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.operators.python import PythonOperator
-from airflow.utils.dates import days_ago
 from airflow.providers.docker.operators.docker import DockerOperator
+from docker.types import Mount
+import os
 
+host_path = os.environ.get("PIPELINE_DATA") #environment variable
 
 with DAG(dag_id="aqi_data_dag",
          start_date=datetime(2025, 8, 1),
@@ -14,9 +16,15 @@ with DAG(dag_id="aqi_data_dag",
          ) as dag:
             fetch_data = DockerOperator(
                 task_id='run_data_processing',
-                image='data_ingestion:latest',
+                image='data_ingestion:v1',#built image name
                 api_version='auto',
-                command = 'python /opt/airflow/scripts/ingestion.py',                
+                command = 'python ingestion.py',    
+                docker_url='unix://var/run/docker.sock',#connection to host docker daemon 
+                mount_tmp_dir=False,   
+                container_name='ingest',
+                auto_remove="force",#auto removes container to avoid conflicts
+                mounts=[Mount(source=host_path, target='/opt/airflow/data', type='bind')],#mounting external volume
+          
             )
 
 
