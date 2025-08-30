@@ -7,7 +7,7 @@ This project uses historical and live data to predict AQI of Shankapark station 
 
 Build all the docker images first for running the scripts 
 ``` sh
-docker build -t data_train:v1 -f scripts train.dockerfile scripts\train.dockerfile
+docker build -t data_train:v1 -f scripts train.dockerfile .
 ```
 ### Configuring docker-copose
 
