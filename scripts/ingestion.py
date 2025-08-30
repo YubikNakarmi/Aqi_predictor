@@ -1,6 +1,9 @@
 import pandas as pd
 import requests
 import os
+import click
+
+
 
 def save_data(data):
     aqi_file_path = r"/opt/airflow/data/raw/shankapark_realtime.csv"
@@ -22,11 +25,13 @@ def save_data(data):
         
     except Exception as e:
         print(f"Error saving data: {e}")
-        
 
-def load_data():
-    token = "88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf"
-    url = f"https://api.waqi.info/search/?keyword=nepal&token={token}"
+def load_weather_data(weather_api_key):
+    url = f"http://api.weatherapi.com/v1/current.json?key={weather_api_key}&q=kathmandu&aqi=no"
+    
+
+def load_aqi_data(aqi_api_key):
+    url = f"https://api.waqi.info/search/?keyword=nepal&token={aqi_api_key}"
     responese = requests.get(url)
 
     load = pd.DataFrame(columns=["aqi", "time"])
@@ -41,8 +46,19 @@ def load_data():
                 l = pd.Series([aqi, time], index=["aqi", "time"])
                 load = pd.concat([load, l.to_frame().T], ignore_index=True)#series to df and transpose
     else:
-        print("Failed to load data")
+        print("Failed to aqi load data")
+    return load
+        
+@click.command()
+@click.option('--weather_api_key', default=None, help='API key for weather data')
+@click.option('--aqi_api_key', default=None, help='API key for AQI data')
+
+def load_data(weather_api_key=None, aqi_api_key=None):
+    load = load_aqi_data(aqi_api_key)
+   
     save_data(load)
+
+
 
 if __name__ == "__main__":
     load_data()
