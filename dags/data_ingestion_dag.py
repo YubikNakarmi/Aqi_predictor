@@ -3,30 +3,21 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.operators.python import PythonOperator
-from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount
 import os
+import subprocess
 
-host_path = os.environ.get("PIPELINE_DATA") #environment variable
+def run_external():
+    subprocess.run(['python', '/opt/airflow/scripts/ingestion.py',
+                    '--weather_api_key', os.environ.get("WEATHER_API_KEY"),
+                    '--aqi_api_key', os.environ.get("AQI_API_KEY")])
+
 
 with DAG(dag_id="aqi_data_dag",
          start_date=datetime(2025, 8, 1),
          schedule='@hourly',
          catchup=False,
          ) as dag:
-            fetch_data = DockerOperator(
-                task_id='run_data_processing',
-                image='data_ingestion:v1',#built image name
-                api_version='auto',
-                command = 'python ingestion.py',    
-                docker_url='unix://var/run/docker.sock',#connection to host docker daemon 
-                mount_tmp_dir=False,   
-                container_name='ingest',
-                auto_remove="force",#auto removes container to avoid conflicts
-                mounts=[Mount(source=host_path, target='/opt/airflow/data', type='bind')],#mounting external volume
-          
-            )
-
-
-
+            fetch_load = PythonOperator(
+                task_id='fetch_and_load',
+                python_callable=run_external)
 

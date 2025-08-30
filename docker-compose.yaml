@@ -149,6 +149,9 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    environment:
+      - WEATHER_API_KEY: "6bcbef49bee949749e6130656252808"
+      - AQI_API_KEY: "88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf"
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -182,6 +185,8 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+      WEATHER_API_KEY: "6bcbef49bee949749e6130656252808"
+      AQI_API_KEY: "88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf"
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
