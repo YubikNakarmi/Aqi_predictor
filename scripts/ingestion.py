@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import os
 import click
+import datetime as dt
 
 
 
@@ -31,34 +32,38 @@ def load_weather_data(weather_api_key):
     
 
 def load_aqi_data(aqi_api_key):
-    url = f"https://api.waqi.info/search/?keyword=nepal&token={aqi_api_key}"
-    responese = requests.get(url)
 
-    load = pd.DataFrame(columns=["aqi", "time"])
-    if responese.status_code == 200:
-        data=responese.json()
+    now = dt.datetime.now()
+    past = dt.datetime.now() - dt.timedelta(days=3)
+    res_now = int(dt.datetime.timestamp(now))
+    res_past = int(dt.datetime.timestamp(past))
+    url = f"http://api.openweathermap.org/data/2.5/air_pollution/history?lat=27.738065847677174&lon=85.33533094823635&start={res_past}&end={res_now}&appid=db714ac9e7a0ea15469110f17a34eccf"
+    response = requests.get(url)
 
-        for station in data["data"]:
-            if (station["uid"]== 14866):
-                aqi=station["aqi"]
-                time = station["time"]["stime"]
+    load = pd.DataFrame(columns=["time","o3","pm2_5","pm10"])
+    if response.status_code == 200:
+        data=response.json()
+        for data in data["list"]:
+                o3=data["components"]["o3"]
+                pm2_5=data["components"]["pm2_5"]
+                pm10=data["components"]["pm10"]
+                time = dt.datetime.fromtimestamp(data["dt"]).strftime('%Y-%m-%d %H:%M:%S')
 
-                l = pd.Series([aqi, time], index=["aqi", "time"])
-                load = pd.concat([load, l.to_frame().T], ignore_index=True)#series to df and transpose
+                l = pd.DataFrame([time,o3,pm2_5,pm10], columns=["time","o3","pm2_5","pm10"])
+                load = pd.concat([load, l], ignore_index=True)#series to df and transpose
     else:
         print("Failed to aqi load data")
     return load
-        
-@click.command()
-@click.option('--weather_api_key', default=None, help='API key for weather data')
-@click.option('--aqi_api_key', default=None, help='API key for AQI data')
 
+
+
+   
+@click.command()
+@click.option('--api_key', default=None, help='API key for AQI data')
 def load_data(weather_api_key=None, aqi_api_key=None):
     load = load_aqi_data(aqi_api_key)
    
     save_data(load)
-
-
 
 if __name__ == "__main__":
     load_data()

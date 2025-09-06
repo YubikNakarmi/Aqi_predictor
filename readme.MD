@@ -1,15 +1,24 @@
 # AQI predictor with Airflow
 
-This project uses historical and live data to predict AQI of Shankapark station in Kathmandu. 
-## Configurations
+This project uses historical and live data to predict AQI of Shankapark station in Kathmandu. All the data is stored is csv file no exteral database is used. 
+
+## Setting up
 
 ### Building docker images
 
-Build all the docker images first for running the scripts 
+Build all the docker images first for running the ML scripts 
 ``` sh
 docker build -t data_train:v1 -f scripts train.dockerfile scripts\train.dockerfile
 ```
-### Configuring docker-copose
+
+``` sh
+docker build -t data_predict:v1 -f scripts predict.dockerfile scripts\predict.dockerfile
+```
+### Configuring docker-compose
+On data_train_dag.py setup the location of root directory. 
+```python
+host_path = "D:/pypipeline/data"
+```
 
 ## Running
 Run the following command on root directory
