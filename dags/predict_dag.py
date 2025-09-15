@@ -21,5 +21,5 @@ with DAG(dag_id="aqi_data_dag",
                 task_id='fetch_and_load',
                 python_callable=run_external)
             
-            train = DockerOperator()
+            predict = DockerOperator()
 

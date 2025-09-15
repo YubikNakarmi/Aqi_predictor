@@ -58,12 +58,12 @@ def load_aqi_data(aqi_api_key):
 
 
    
-@click.command()
-@click.option('--api_key', default=None, help='API key for AQI data')
-def load_data(weather_api_key=None, aqi_api_key=None):
-    load = load_aqi_data(aqi_api_key)
+# @click.command()
+# @click.option('--api_key', default=None, help='API key for AQI data')
+# def load_data(weather_api_key=None, aqi_api_key=None):
+#     load = load_aqi_data(aqi_api_key)
    
-    save_data(load)
+#     save_data(load)
 
-if __name__ == "__main__":
-    load_data()
+# if __name__ == "__main__":
+#     load_data()
