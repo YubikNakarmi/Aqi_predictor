@@ -1,6 +1,11 @@
 from sklearn.preprocessing import simpleimputer
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
+import pandas as pd
 
-class aqi_predictor():
+
+def train():
+    pass
     

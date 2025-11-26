@@ -4,6 +4,14 @@ This project uses historical and live data to predict AQI of Shankapark station 
 
 ## Setting up
 
+### DVC setup
+
+Dvc is setup with azure blob storage
+``` sh
+dvc pull 
+```
+
+
 ### Building docker images
 
 Build all the docker images first for running the ML scripts 

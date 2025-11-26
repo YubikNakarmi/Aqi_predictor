@@ -8,7 +8,7 @@ import os
 import subprocess
 
 def run_external():
-    subprocess.run(['python', '/opt/airflow/scripts/ingestion.py',
+    subprocess.run(['python', '/opt/airflow/scripts/ingestion_hourly.py',
                     '--api_key', os.environ.get("API_KEY")])
 
 
