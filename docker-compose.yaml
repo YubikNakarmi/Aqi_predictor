@@ -141,7 +141,7 @@ services:
     command: scheduler
     environment:
       <<: *airflow-common-env
-      API_KEY: "db714ac9e7a0ea15469110f17a34eccf"   
+      API_KEY: "84737501867f684f51f05bd39eb89b6c"   
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
       interval: 30s
