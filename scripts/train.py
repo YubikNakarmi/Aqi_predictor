@@ -7,5 +7,4 @@ import optuna
 
 
 def train():
-    pass
     

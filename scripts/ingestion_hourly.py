@@ -4,25 +4,25 @@ import os
 import click
 import datetime as dt
 import logging
+from airflow.utils.log.logging_mixin import LoggingMixin
+
 
 DEFAULT_AQI_COLUMNS = ["time","o3","pm2_5","pm10"]
+
 DEFAULT_WEATHER_COLUMNS = ["time","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
 DEFAULT_MERGED_COLUMNS = ["time","o3","pm2_5","pm10","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
-LOG_FORMAT = '%(asctime)s %(levelname)s %(filename)s: %(lineno)d %(message)s'
-
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-logger = logging.getLogger(__name__)
-
-
-
-
+logger = LoggingMixin().log
+formatter = logging.Formatter(fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+for handler in logger.handlers:
+    handler.setFormatter(formatter)
 
 def save_data(data:pd.DataFrame)->pd.DataFrame:
-
     aqi_file_path = r"/opt/airflow/data/raw/shankapark_realtime.csv" #container directory
     #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
@@ -40,11 +40,12 @@ def save_data(data:pd.DataFrame)->pd.DataFrame:
             aqi = pd.DataFrame(columns=DEFAULT_MERGED_COLUMNS)
             aqi = pd.concat([aqi, data], ignore_index=True)
         aqi.to_csv(aqi_file_path, index=False)
+        logger.info("Data saved successfully.")
         print("Data saved successfully.")
         
     except Exception as e:
+        logger.error(f"Error saving data: {e}")
         print(f"Error saving data: {e}")
-
 
 
 def load_weather_data(api)->pd.DataFrame:
@@ -59,7 +60,6 @@ def load_weather_data(api)->pd.DataFrame:
     if response.status_code == 200:
         data = response.json()
         for result in data["list"]:
-        
             time = dt.datetime.fromtimestamp(result["dt"]).strftime('%Y-%m-%d %H:%M:%S')
             temp = result["main"]["temp"]
             humidity = result["main"]["humidity"]
@@ -79,15 +79,16 @@ def load_weather_data(api)->pd.DataFrame:
             rows.append({"time": time, "temp": temp, "humidity": humidity, 
                          "windspeed": windspeed, "weather": weather, "weather_description": weather_description, 
                          "rain": rain, "snow": snow})
+            logger.info(f"Loaded weather data for time: {time}")
     else:
         print("Failed to load weather data")
+        logger.error("Failed to load weather data from API response code: {response.status_code}, returning empty dataframe")
 
     load = pd.DataFrame(rows, columns=DEFAULT_WEATHER_COLUMNS)
     return load
 
 
 def load_aqi_data(aqi_api_key: str = None) -> pd.DataFrame:
-
     now = dt.datetime.now()
     past = dt.datetime.now() - dt.timedelta(days=4)
     res_now = int(dt.datetime.timestamp(now))
@@ -105,15 +106,14 @@ def load_aqi_data(aqi_api_key: str = None) -> pd.DataFrame:
             time = dt.datetime.fromtimestamp(data["dt"]).strftime('%Y-%m-%d %H:%M:%S')
 
             rows.append({"time": time, "o3": o3, "pm2_5": pm25, "pm10": pm10})
+            logger.info(f"Loaded AQI data for time: {time}")
                 
     else:
         print("Failed to aqi load data")
-
+        logger.error("Failed to load AQI data from API response code: {response.status_code}, returning empty dataframe")
 
     load = pd.DataFrame(rows, columns=DEFAULT_AQI_COLUMNS)
-
     return load
-
 
    
 @click.command()
@@ -124,10 +124,10 @@ def main(api_key):
     aqi_load = load_aqi_data(api_key)
     weather_load = load_weather_data(api_key)
     load = pd.merge(aqi_load, weather_load, on='time', how='inner')
-    print(load)
 
     if load.empty:
         print("No data loaded. Exiting.")
+        logger.error("No data loaded. Exiting.")
         return
     else:
         save_data(load.fillna(0.00))
