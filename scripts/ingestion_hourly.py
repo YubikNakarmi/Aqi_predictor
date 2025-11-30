@@ -9,7 +9,8 @@ DEFAULT_AQI_COLUMNS = ["time","o3","pm2_5","pm10"]
 DEFAULT_WEATHER_COLUMNS = ["time","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
-DEFAULT_MERGED_COLUMNS = DEFAULT_AQI_COLUMNS + DEFAULT_WEATHER_COLUMNS[1:]
+DEFAULT_MERGED_COLUMNS = ["time","o3","pm2_5","pm10","temp","humidity","rain1h","snowfall","windspeed"
+                           ,"weather","weather_description"]
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(filename)s: %(lineno)d %(message)s'
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 def save_data(data:pd.DataFrame)->pd.DataFrame:
 
     aqi_file_path = r"/opt/airflow/data/raw/shankapark_realtime.csv" #container directory
+    #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
     try:
         if os.path.exists(aqi_file_path):
@@ -51,11 +53,12 @@ def load_weather_data(api)->pd.DataFrame:
     res_now = int(dt.datetime.timestamp(now))
     res_past = int(dt.datetime.timestamp(past))
     
-    weather_url = f"https://history.openweathermap.org/data/2.5/history/city?lat=1.5533&lon=110.3592&type=hour&start={res_past}&end={res_now}&appid={api}"
-    response = requests.get(weather_url).json()
+    weather_url = f"https://history.openweathermap.org/data/2.5/history/city?lat=27.738065847677174&lon=85.33533094823635&type=hour&start={res_past}&end={res_now}&units=metric&appid={api}"
+    response = requests.get(weather_url)
     rows = []
     if response.status_code == 200:
-        for result in response["list"]:
+        data = response.json()
+        for result in data["list"]:
         
             time = dt.datetime.fromtimestamp(result["dt"]).strftime('%Y-%m-%d %H:%M:%S')
             temp = result["main"]["temp"]
@@ -121,14 +124,16 @@ def main(api_key):
     aqi_load = load_aqi_data(api_key)
     weather_load = load_weather_data(api_key)
     load = pd.merge(aqi_load, weather_load, on='time', how='inner')
+    print(load)
 
     if load.empty:
         print("No data loaded. Exiting.")
         return
     else:
-        save_data(load)
+        save_data(load.fillna(0.00))
 
 if __name__ == "__main__":
+    #api = os.environ.get("API_key")
     main()
-    api = os.environ.get("API_key")
+
    
