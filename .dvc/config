@@ -1,0 +1,4 @@
+[core]
+    remote = azureremote
+['remote "azureremote"']
+    url = azure://aqi/static

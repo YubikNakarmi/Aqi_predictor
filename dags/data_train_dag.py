@@ -7,7 +7,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 import os
 
-host_path = os.environ.get("PIPELINE_DATA") #environment variable
+host_path = "D:/pypipeline/data" #environment variable
 
 with DAG(dag_id="aqi_data_dag",
          start_date=datetime(2025, 8, 1),

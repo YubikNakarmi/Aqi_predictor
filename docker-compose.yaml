@@ -79,6 +79,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data  
     - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
+    # docker mounts the docker.sock file into containers to enable
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -138,6 +139,9 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    environment:
+      <<: *airflow-common-env
+      API_KEY: "84737501867f684f51f05bd39eb89b6c"   
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
       interval: 30s
@@ -149,9 +153,6 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    environment:
-      - WEATHER_API_KEY: "6bcbef49bee949749e6130656252808"
-      - AQI_API_KEY: "88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf"
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -185,8 +186,7 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
-      WEATHER_API_KEY: "6bcbef49bee949749e6130656252808"
-      AQI_API_KEY: "88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf"
+
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
