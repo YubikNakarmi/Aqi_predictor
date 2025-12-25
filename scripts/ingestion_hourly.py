@@ -48,7 +48,7 @@ def save_data(data:pd.DataFrame)->pd.DataFrame:
         print(f"Error saving data: {e}")
 
 
-def load_weather_data(api)->pd.DataFrame:
+def load_weather_data(api:str, lat: float = 27.738065847677174, lon: float = 85.33533094823635)->pd.DataFrame:
     now = dt.datetime.now()
     past = dt.datetime.now() - dt.timedelta(days=4) #to unix time conversion for api
     res_now = int(dt.datetime.timestamp(now))
@@ -88,12 +88,12 @@ def load_weather_data(api)->pd.DataFrame:
     return load
 
 
-def load_aqi_data(aqi_api_key: str = None) -> pd.DataFrame:
+def load_aqi_data(aqi_api_key: str = None,lat: float = 27.738065847677174, lon: float = 85.33533094823635) -> pd.DataFrame:
     now = dt.datetime.now()
     past = dt.datetime.now() - dt.timedelta(days=4)
     res_now = int(dt.datetime.timestamp(now))
     res_past = int(dt.datetime.timestamp(past))
-    url = f"http://api.openweathermap.org/data/2.5/air_pollution/history?lat=27.738065847677174&lon=85.33533094823635&start={res_past}&end={res_now}&appid={aqi_api_key}"
+    url = f"http://api.openweathermap.org/data/2.5/air_pollution/history?lat={lat}&lon={lon}&start={res_past}&end={res_now}&appid={aqi_api_key}"
     rows = []
     response = requests.get(url) 
 
@@ -118,6 +118,8 @@ def load_aqi_data(aqi_api_key: str = None) -> pd.DataFrame:
    
 @click.command()
 @click.option('--api_key', default=None, help='API key for AQI data and weather data')
+@click.option('--lat', default=27.738065847677174, help='Latitude for AQI data and weather data')
+@click.option('--lon', default=85.33533094823635, help='Longitude for AQI data and weather data')
 
 def main(api_key):
     
