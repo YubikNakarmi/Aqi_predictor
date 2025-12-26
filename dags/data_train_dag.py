@@ -25,7 +25,7 @@ with DAG(dag_id="aqi_data_dag",
                 auto_remove="force",#auto removes container to avoid conflicts
                 mounts=[Mount(source=host_path, target='/opt/airflow/data', type='bind')],#mounting external volume
                 environment={"AQI_API_KEY":"88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf",
-                             "WEATHER_API_KEY":"6bcbef49bee949749e6130656252808"},#setting environment variable inside container
+                             },#setting environment variable inside container
           
             )
 
