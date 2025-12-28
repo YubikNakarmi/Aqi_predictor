@@ -7,5 +7,14 @@ import optuna
 import mlflow
 
 
+
+def objective(trial, X_train, y_train, X_valid, y_valid):
+    pass
+
+
 def train():
-    
+    xgb_model = xgb.XGBRegressor()
+
+
+def main():
+    global
