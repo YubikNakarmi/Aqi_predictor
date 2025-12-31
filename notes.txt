@@ -1,8 +1,0 @@
-docker build -t data_ingestion:latest -f scripts/ingestion.dockerfile .
-
-set PIPELINE_DATA=D:/pypipeline/data # set environment variable for mount
-export PIPELINE_DATA=/home/user/pypipeline/data
-
-$env:path "asdfasdf"
-
-docker_url='unix://var/run/docker.sock',#connection to host docker daemon 
