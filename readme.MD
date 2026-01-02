@@ -9,6 +9,7 @@ This project uses historical and live data to predict AQI of Shankapark station 
 Dvc is setup with azure blob storage
 ``` sh
 dvc pull 
+dvc get
 ```
 
 
