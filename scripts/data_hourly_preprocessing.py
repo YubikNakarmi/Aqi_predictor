@@ -26,6 +26,7 @@ class DataCleaner:
 
     @staticmethod
     def trend_3(x):
+        ''' ploy fit function for imputation(derivative estimation) '''
         arr = np.asarray(x)
         arr = arr[~np.isnan(arr)]
         if arr.size < 2:
@@ -44,6 +45,7 @@ class DataCleaner:
 
     @staticmethod
     def df_load_from_api(input_url: str) -> pd.DataFrame:
+        ''' work in progress, have not implemented full functionality yet '''
         response = requests.get(input_url)
         data = response.json()
         records = data['result']['records']
@@ -88,14 +90,16 @@ class DataCleaner:
         df["is_night"] = df["hour"].isin([0, 1, 2, 3, 4, 5]).astype(int)
         df["pm25_missing"] = df["pm25"].isna().astype(int)
         df["o3_missing"] = df["o3"].isna().astype(int)
+        return df
 
+    def add_gap_length(self, df: pd.DataFrame) -> pd.DataFrame:
         pm25_run_id = (df["pm25_missing"] != df["pm25_missing"].shift()).cumsum()
         o3_run_id = (df["o3_missing"] != df["o3_missing"].shift()).cumsum()
         df["pm25_gap_length"] = df["pm25_missing"].groupby(pm25_run_id).transform("sum")
         df["o3_gap_length"] = df["o3_missing"].groupby(o3_run_id).transform("sum")
         return df
+
     
-        
 
 
     def impute_values(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -199,11 +203,24 @@ class DataCleaner:
         print(f"Negative value count: {neg_count}")
         self.df_merged = self.extract_pm_o3(self.df_raw)
         self.df_clean = self.clean_and_index(self.df_merged)
+        self.df_clean = self.add_gap_length(self.df_clean)
+
         self.df_imputed = self.impute_values(self.df_clean)
         self.df_segmented = self.add_segmentation(self.df_imputed)
         self.df_features = self.engineer_features(self.df_segmented)
         if self.output_csv:
             self.save_processed(self.df_features)
+            
+
+    def run_from_cleaned(self, cleaned_df: pd.DataFrame):
+        """Assumes cleaned_df already has pm25/o3 columns and datetime index."""
+        self.df_clean = self.add_gap_length(cleaned_df)
+        self.df_imputed = self.impute_values(self.df_clean)
+        self.df_segmented = self.add_segmentation(self.df_imputed)
+        self.df_features = self.engineer_features(self.df_segmented)
+        if self.output_csv:
+            self.save_processed(self.df_features)
+        return self.df_features
 
 @click.command()
 @click.option("--input_csv", type=str, required=True)
@@ -211,6 +228,7 @@ class DataCleaner:
 
 # defualt entry point when running script
 def main(input_csv: str, output_csv: str):
+
     cleaner = DataCleaner(
         input_csv=input_csv,
         output_csv=output_csv
