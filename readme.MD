@@ -35,7 +35,7 @@ To make the `modules` package importable while you develop it, install the proje
 
 ```sh
 # from the project root
-python -m pip install -e .
+venv/scripts/python.exe -m pip install -e .
 ```
 
 What this does:

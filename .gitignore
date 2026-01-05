@@ -2,5 +2,5 @@
 /.venv
 /.vscode
 .env 
-.changes.md
+CHANGES.md
 __pycache__/

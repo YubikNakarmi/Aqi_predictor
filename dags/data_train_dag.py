@@ -6,7 +6,7 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 import os
-from src.scripts import ingestion_run
+from scripts import ingestion_run
 
 host_path = "D:/pypipeline/data" #environment variable
 
@@ -17,9 +17,9 @@ with DAG(dag_id="aqi_data_dag",
          ) as dag:
             fetch_data = PythonOperator(
                 task_id='fetch_and_load',
-                python_callable=ingestion_run(dest=host_path),
-                op_kwargs={"api_key": os.environ.get("OPEN_WEATHER_API_KEY")}# container env key
-            ),
+                python_callable=ingestion_run,
+                op_kwargs={"api_key": os.environ.get("OPEN_WEATHER_API_KEY"), "dest": host_path}# container env key
+            )
 
             train = DockerOperator(
                 task_id='run_data_processing',

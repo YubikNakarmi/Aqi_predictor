@@ -1,1 +1,5 @@
-{}
+{
+  "python.analysis.extraPaths": ["./src"],
+  "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
+  "python.analysis.autoSearchPaths": true
+}
