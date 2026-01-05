@@ -1,0 +1,14 @@
+pyproject.toml
+setup.cfg
+src/modules/__init__.py
+src/modules/data_hourly_preprocessing.py
+src/pypipeline.egg-info/PKG-INFO
+src/pypipeline.egg-info/SOURCES.txt
+src/pypipeline.egg-info/dependency_links.txt
+src/pypipeline.egg-info/entry_points.txt
+src/pypipeline.egg-info/requires.txt
+src/pypipeline.egg-info/top_level.txt
+src/scripts/__init__.py
+src/scripts/ingestion_hourly.py
+src/scripts/test.py
+src/scripts/train_hourly.py

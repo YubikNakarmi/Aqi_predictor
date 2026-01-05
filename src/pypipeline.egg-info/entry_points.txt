@@ -1,0 +1,4 @@
+[console_scripts]
+aqi-ingest = scripts.ingestion_hourly:main
+aqi-train = scripts.train:main
+data_hourly_preprocessing = modules.data_hurly_preprocessing:main

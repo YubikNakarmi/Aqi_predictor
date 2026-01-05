@@ -22,8 +22,8 @@ formatter = logging.Formatter(fmt="%(asctime)s | %(levelname)s | %(name)s | %(me
 for handler in logger.handlers:
     handler.setFormatter(formatter)
 
-def save_data(data:pd.DataFrame)->pd.DataFrame:
-    aqi_file_path = r"/opt/airflow/data/raw/shankapark_realtime.csv" #container directory
+def save_data(data:pd.DataFrame,aqi_file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv")->pd.DataFrame:
+    #container directory
     #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
     try:
@@ -115,13 +115,30 @@ def load_aqi_data(aqi_api_key: str = None,lat: float = 27.738065847677174, lon: 
     load = pd.DataFrame(rows, columns=DEFAULT_AQI_COLUMNS)
     return load
 
+''' module runner for airflow compose'''
+def run(api_key:str,lat: float = 27.738065847677174, 
+        lon: float = 85.33533094823635, dest:str= r"/opt/airflow/data/raw/shankapark_realtime.csv"):
+
+    aqi_load = load_aqi_data(api_key)
+    weather_load = load_weather_data(api_key)
+    load = pd.merge(aqi_load, weather_load, on='time', how='inner')
+
+    if load.empty:
+        print("No data loaded. Exiting.")
+        logger.error("No data loaded. Exiting.")
+        return
+    else:
+        save_data(load.fillna(0.00),aqi_file_path=dest)
+
+
+''' cli entry'''
    
 @click.command()
 @click.option('--api_key', default=None, help='API key for AQI data and weather data')
 @click.option('--lat', default=27.738065847677174, help='Latitude for AQI data and weather data')
 @click.option('--lon', default=85.33533094823635, help='Longitude for AQI data and weather data')
 
-def main(api_key):
+def main(api_key):#cli script entry
     
     aqi_load = load_aqi_data(api_key)
     weather_load = load_weather_data(api_key)

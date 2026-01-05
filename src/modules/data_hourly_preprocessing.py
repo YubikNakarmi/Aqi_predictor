@@ -42,6 +42,17 @@ class DataCleaner:
         else:
             raise ValueError("Either input_df or input_csv must be provided.")
         return self.df_raw
+    
+    def split(self,df:pd.DataFrame, test_size: float = 0.15, val_size: float = 0.15,train_size: float = 0.7):
+        ''' split data into train, validation and test sets based on time '''
+        n = len(df)
+        train_end = int(n * train_size)
+        val_end = int(n * (train_size + val_size))
+        df_train = df.iloc[:train_end]
+        df_val = df.iloc[train_end:val_end]
+        df_test = df.iloc[val_end:]
+        return df_train, df_val, df_test
+     
 
     @staticmethod
     def df_load_from_api(input_url: str) -> pd.DataFrame:
@@ -222,20 +233,3 @@ class DataCleaner:
             self.save_processed(self.df_features)
         return self.df_features
 
-@click.command()
-@click.option("--input_csv", type=str, required=True)
-@click.option("--output_csv", type=str, required=True)
-
-# defualt entry point when running script
-def main(input_csv: str, output_csv: str):
-
-    cleaner = DataCleaner(
-        input_csv=input_csv,
-        output_csv=output_csv
-    )
-    cleaner.run()
-
-
-# Example usage for different splits (scalable entry point)
-if __name__ == "__main__":
-    main()

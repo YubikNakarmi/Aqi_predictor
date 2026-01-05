@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: pypipeline
+Version: 0.0.0
+Summary: Minimal packaging to install modules package for development
+Author: You
+License: MIT
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: scikit-learn
+Requires-Dist: click
+Requires-Dist: requests

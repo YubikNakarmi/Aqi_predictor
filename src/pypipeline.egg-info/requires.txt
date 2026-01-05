@@ -1,0 +1,12 @@
+pandas
+numpy
+scikit-learn
+joblib
+mlflow
+boto3
+s3fs
+
+[ml]
+mlflow
+boto3
+s3fs

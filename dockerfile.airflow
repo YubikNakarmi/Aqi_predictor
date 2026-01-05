@@ -1,0 +1,25 @@
+# Dockerfile.airflow
+FROM apache/airflow:2.6.4-python3.11
+
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+WORKDIR /opt/pypipeline
+
+# Copy minimal m
+COPY pyproject.toml setup.cfg /opt/pypipeline/
+COPY src /opt/pypipeline/src
+COPY dags /opt/pypipeline/dags
+COPY requirements.txt /opt/pypipeline/  
+
+# Install package 
+RUN pip install --no-cache-dir -e /opt/pypipeline[ml] \
+    && pip install --no-cache-dir mlflow boto3 s3fs
+
+# Defaults 
+ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags
+ENV MLFLOW_TRACKING_URI=http://mlflow:5000
+ENV PYTHONUNBUFFERED=1
+

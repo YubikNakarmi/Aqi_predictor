@@ -29,10 +29,41 @@ On data_train_dag.py setup the location of root directory.
 host_path = "D:/pypipeline/data"
 ```
 
+## Development (editable install) 
+
+To make the `modules` package importable while you develop it, install the project in editable mode:
+
+```sh
+# from the project root
+python -m pip install -e .
+```
+
+What this does:
+- Installs the package in "editable" mode so Python uses the project source directly.
+- Changes you make to files (e.g., `modules/`) are available immediately without reinstalling.
+
+To undo:
+
+```sh
+python -m pip uninstall pypipeline
+```
+
+Notes:
+- Ensure your virtual environment is active before running the commands.
+- If you use a notebook kernel, restart the kernel after installation.
+
 ## Running
 Run the following command on root directory
 ``` sh 
 docker compose up
 ```
+
+## Secrets
+.env file was used for storing environment variable for api key
+
+```
+OPEN_WEATHER_API_KEY = ----
+```
+furthermore locally azure blob key was also used for dvc
 
 
