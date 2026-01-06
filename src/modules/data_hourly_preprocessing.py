@@ -109,10 +109,7 @@ class DataCleaner:
         df["pm25_gap_length"] = df["pm25_missing"].groupby(pm25_run_id).transform("sum")
         df["o3_gap_length"] = df["o3_missing"].groupby(o3_run_id).transform("sum")
         return df
-
     
-
-
     def impute_values(self, df: pd.DataFrame) -> pd.DataFrame:
         print("NA counts before imputation:\n", df.isna().sum())
         df_imputation = df.copy()
@@ -151,8 +148,6 @@ class DataCleaner:
         df_imputation.loc[large_gap_mask_pm25, "imputation_confidence"] = "low"
         df_imputation.loc[large_gap_mask_o3, "imputation_confidence"] = "low"
         return df_imputation
-
-
 
     def add_segmentation(self, df_imputation: pd.DataFrame) -> pd.DataFrame:
         segment = (
@@ -201,8 +196,6 @@ class DataCleaner:
         df_engineering["pm25_o3_ratio"].replace([np.inf, -np.inf], np.nan, inplace=True)
         return df_engineering
 
-
-
     def save_processed(self, df: pd.DataFrame):
         os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
         df.to_csv(self.output_csv)
@@ -222,8 +215,15 @@ class DataCleaner:
         if self.output_csv:
             self.save_processed(self.df_features)
             
-
-    def run_from_cleaned(self, cleaned_df: pd.DataFrame):
+    def run_clean(self,df_raw:pd.DataFrame):
+        self.df_raw = df_raw
+        self.df_merged = self.extract_pm_o3(self.df_raw)
+        self.df_clean = self.clean_and_index(self.df_merged)
+        if self.output_csv:
+            self.save_processed(self.df_clean)
+        return self.df_clean
+        
+    def run_from_cleaned(self, cleaned_df: pd.DataFrame)->pd.DataFrame:
         """Assumes cleaned_df already has pm25/o3 columns and datetime index."""
         self.df_clean = self.add_gap_length(cleaned_df)
         self.df_imputed = self.impute_values(self.df_clean)

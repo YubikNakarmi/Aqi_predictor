@@ -58,6 +58,24 @@ Run the following command on root directory
 docker compose up
 ```
 
+## MLflow 
+
+### Setup
+Mlflow is setup with sqlite database and azure blob storage for artifacts. It is configured in docker-compose.yaml file to mount /db folder as a backend store, and artifacts store is setup with environment variable DEFAULT_ARTIFACT_ROOT (Azure blob storage).
+
+``` python
+artifacts_uri = os.environ["DEFAULT_ARTIFACT_ROOT"]
+tracking = os.environ["MLFLOW_TRACKING_URI"] or "http://localhost:5000" #automatically logs in sqlite db locally
+mlflow.set_tracking_uri(tracking)
+```
+
+### Running MLflow server
+
+``` sh
+docker compose up mlflow
+```
+Then access mlflow at http://localhost:5000
+
 ## Secrets
 .env file was used for storing environment variable for api key
 

@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 USER airflow
 WORKDIR /opt/pypipeline
 
-# Copy minimal m
+# Copy minimal 
 COPY pyproject.toml setup.cfg /opt/pypipeline/
 COPY src /opt/pypipeline/src
 COPY dags /opt/pypipeline/dags
@@ -16,7 +16,7 @@ COPY requirements.txt /opt/pypipeline/
 
 # Install package 
 RUN pip install --no-cache-dir -e /opt/pypipeline[ml] \
-    && pip install --no-cache-dir mlflow boto3 s3fs
+    && pip install --no-cache-dir mlflow boto3 s3fs mlflow[azure]
 
 # Defaults 
 ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags

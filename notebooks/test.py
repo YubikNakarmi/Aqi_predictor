@@ -1,1 +1,1 @@
-from scripts import ingestion_run
+import scripts.ingestion_hourly as hourly

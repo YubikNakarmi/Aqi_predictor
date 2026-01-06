@@ -47,7 +47,9 @@ def tune():
     mlflow.set_experiment("Hourly_AQI_Tuning_Experiment")
 
 
-
+def run_all():
+    mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI')
+    
 
 def train():
     pass # train the best model on the whole dataset

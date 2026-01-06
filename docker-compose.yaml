@@ -49,7 +49,7 @@ x-airflow-common:
   image: ${AIRFLOW_IMAGE_NAME:-my-airflow:latest}
   build:
     context: .
-    dockerfile: Dockerfile.airflow
+    dockerfile: dockerfile.airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -78,7 +78,6 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data  
     - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src:ro
-    - ${AIRFLOW_PROJ_DIR:-.}/db:/opt/airflow/db
     # make the host ./db available at /db as well (for MLflow server backend/artifacts)
     - ${AIRFLOW_PROJ_DIR:-.}/db:/db
     - /var/run/docker.sock:/var/run/docker.sock
@@ -120,18 +119,19 @@ services:
       start_period: 30s
     restart: always
 
-  # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under ./db/artifacts)
+  # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
   mlflow:
     image: python:3.11-slim
     command: >
       sh -c "pip install --no-cache-dir mlflow && mkdir -p /db/artifacts && \
-             mlflow server --backend-store-uri sqlite:////db/mlflowdb \
-                           --default-artifact-root /db/artifacts \
-                           --host 0.0.0.0 --port 5000"
+             mlflow server --backend-store-uri sqlite:////db/mlflow.db \
+                           --default-artifact-root \"$DEFAULT_ARTIFACT_ROOT\" --host 0.0.0.0 --port 5000"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}/db:/db
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:5000"]
       interval: 10s
@@ -206,6 +206,7 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+      DEFAULT_ARTIFACT_ROOT: ${DEFAULT_ARTIFACT_ROOT:-file:///db/artifacts}
 
     restart: always
     depends_on:
