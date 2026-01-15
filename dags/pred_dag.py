@@ -21,7 +21,7 @@ with DAG(dag_id="aqi_data_dag",
                 op_kwargs={"api_key": os.environ.get("OPEN_WEATHER_API_KEY"), "dest": host_path}# container env key
             )
 
-            train = DockerOperator(
+            pred = DockerOperator(
                 task_id='run_data_processing',
                 image='data_train:v1',#built image name
                 api_version='auto',

@@ -124,7 +124,7 @@ services:
     image: python:3.11-slim
     command: >
       sh -c "pip install --no-cache-dir mlflow && mkdir -p /db/artifacts && \
-             mlflow server --backend-store-uri sqlite:////db/mlflow.db \
+             mlflow server --backend-store-uri sqlite:///db/mlflow.db \
                            --default-artifact-root \"$DEFAULT_ARTIFACT_ROOT\" --host 0.0.0.0 --port 5000"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}/db:/db

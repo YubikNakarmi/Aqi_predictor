@@ -160,8 +160,6 @@ class DataCleaner:
         df_imputation["o3_missing"] = df_imputation["o3"].isna().astype(int)
         return df_imputation
 
-
-
     def engineer_features(self, df: pd.DataFrame) -> pd.DataFrame:
         df_engineering = df.copy()
         lags = [i for i in range(1, 25)]
@@ -215,7 +213,11 @@ class DataCleaner:
         if self.output_csv:
             self.save_processed(self.df_features)
             
-    def run_clean(self,df_raw:pd.DataFrame):
+    def run_clean(self,df_raw:pd.DataFrame)->pd.DataFrame:
+        ''' Runs full cleaning pipeline from raw dataframe input '''
+        if df_raw is None:
+            df_raw = self.input_df #defaults to attribute input_df if no argument provided
+
         self.df_raw = df_raw
         self.df_merged = self.extract_pm_o3(self.df_raw)
         self.df_clean = self.clean_and_index(self.df_merged)

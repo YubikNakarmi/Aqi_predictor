@@ -16,7 +16,7 @@ COPY requirements.txt /opt/pypipeline/
 
 # Install package 
 RUN pip install --no-cache-dir -e /opt/pypipeline[ml] \
-    && pip install --no-cache-dir mlflow boto3 s3fs mlflow[azure]
+    && pip install --no-cache-dir mlflow boto3 s3fs mlflow[azure]  optuna-integration[mlflow]
 
 # Defaults 
 ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags
