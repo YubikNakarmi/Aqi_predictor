@@ -57,11 +57,9 @@ def split(train_size:float = 0.7, val_size:float = 0.15, test_size:float = 0.15,
 def objective(trial, df_train=None, df_val=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id",]):
+                    ["segment_id",],h:int=1):
     #Preparing data for 1 hour ahead prediction
     #Tuning hyperparamaters
-
-    h=1 #tuning for 1 hour horizon
 
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 300, 800),
@@ -119,9 +117,8 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     return mae
     
 
-def tune(main_df:pd.DataFrame=None):
+def tune(main_df:pd.DataFrame=None, df_train:pd.DataFrame=None, df_val:pd.DataFrame=None):
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
-    mlflow.set_experiment("Hourly_AQI_Tuning_Experiment")
 
     features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + [f"o3_plus_{i}h" for i in range(1,25)] + \
                     ["segment_id",]
@@ -137,32 +134,101 @@ def tune(main_df:pd.DataFrame=None):
     storage = f"sqlite:///{os.path.abspath 
                                          (os.path.join(os.path.dirname(__file__), '../db/optuna.db'))}"
 
-    study = optuna.create_study(direction="minimize", storage=storage, study_name="xgb_aqi_study", 
-                                load_if_exists=True)
+    with mlflow.start_run(run_name="optuna_tuning"):
+        study = optuna.create_study(direction="minimize", storage=storage, study_name="xgb_aqi_study", 
+                                    load_if_exists=True)
 
-    # prepare data once (to speed up trials and ensure consistent validation)
-    df_train, df_val, _ = split()
-    obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
+        # prepare data once (to speed up trials and ensure consistent validation)
+        if df_train is None or df_val is None:
+            df_train, df_val, _ = split(main_df)
 
-    study.optimize(obj, n_trials=60, callbacks=[opt_tracker])
+        obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
 
-    # save best params to json
-    best_params = study.best_params
+        study.optimize(obj, n_trials=60, callbacks=[opt_tracker])
+
+        # save best params to json
+        best_params = study.best_params
     return best_params
 
 def run_all():
     mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI')
     
 
-def train():
-    best_params = tune()
+def train(horizons:int = 24,best_params:dict=None,
+         df_val:pd.DataFrame=None,df_train:pd.DataFrame=None, main_df:pd.DataFrame=None):
+    #training all models for 24 horizons using best params
+    if df_train is None or df_val is None:
+        df_train, df_val, = split(df=main_df)
+
+    if best_params is None:
+        best_params = tune(main_df=main_df, df_train=df_train, df_val=df_val)
+
+    val_metrics = {}
+    models = {}
+
+    features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] +\
+    [f"o3_plus_{i}h" for i in range(1,25)] +\
+    ["segment_id"]
+
+
+    for h in range(1, horizons+1):
+        with mlflow.start_run(run_name=f"train_h{h}"):#differnt run for each horizon
+            train_mask = df_train[f"pm25_plus_{h}h"].notnull() & (df_train[f"pm25_plus_{h}h"] >=0) \
+            & (df_train[f"pm25_plus_{h}h"] <=500)
+
+            eval_mask = df_val[f"pm25_plus_{h}h"].notnull() & (df_val[f"pm25_plus_{h}h"] >=0) \
+            & (df_val[f"pm25_plus_{h}h"] <=500)
+            #using only valid data points
+            y = df_train.loc[train_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+            X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
+
+
+            y_val = df_val.loc[eval_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+            X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
+
+            # Skip horizons with insufficient data
+            if y.empty or y_val.empty:
+                print(f"Skipping horizon {h} due to insufficient data (train={len(y)}, val={len(y_val)})")
+                continue
+
+            reg = xgb.XGBRegressor(**best_params)
+            reg.fit(
+                X,
+                y,
+                eval_set=[(X_val, y_val)],
+                        verbose=False,
+            )
+
+            models[f"pm25_plus_{h}h"] = reg
+            val_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_val, reg.predict(X_val))
+
+            mlflow.log_metric(f"val_mae_pm25_plus_{h}h", val_metrics[f"pm25_plus_{h}h"])
+            mlflow.xgboost.log_model(reg, f"pm25_plus_{h}h_model")
+
+    return models, val_metrics
+    
 def test():
     pass
 
 
 def main():
-    #set mlfluw tracking using relative path
-    mlflow.set_tracking_uri(f"http://localhost:5000")
+    #set mlfluw tracking using relative path on a local server
+    mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI'))
+
+    main_df = pd.read_csv("data/raw/cleaned_data.csv")
+    main_df = clean_and_target(main_df)
+    df_train, df_val, df_test = split(main_df)
+
+    mlflow.set_experiment("Hourly_AQI_Tuning_Experiment")
+    best_params = tune(main_df=main_df, df_train=df_train, df_val=df_val)
+
+    mlflow.set_experiment("Hourly_AQI_Experiment") #setting differnt experiment for actual training
+    models, val_metrics = train(horizons=24, best_params=best_params, df_train=df_train, df_val=df_val)
+
+    print("Validation Metrics:", val_metrics)
+
+
+
     
     tune()
     mlflow.set_experiment("Hourly_AQI_Experiment")
