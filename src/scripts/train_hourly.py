@@ -1,4 +1,4 @@
-from flask import json
+from sklearn.calibration import signature
 import xgboost as xgb
 import pandas as pd
 import optuna
@@ -9,6 +9,9 @@ from modules.data_hourly_preprocessing import DataCleaner as clean
 import os
 import numpy as np
 from functools import partial
+from mlflow.models.signature import infer_signature
+from mlflow.tracking import MlflowClient
+
 
 def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame = None, 
                      test: pd.DataFrame = None ):
@@ -30,10 +33,7 @@ def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame
 
 
 
-def split(train_size:float = 0.7, val_size:float = 0.15, test_size:float = 0.15, df:pd.DataFrame=None):
-
-    main_data = clean()
-    cleaned = main_data.run_clean(df)
+def split(cleaned:pd.DataFrame,train_size:float = 0.7, val_size:float = 0.15, test_size:float = 0.15, df:pd.DataFrame=None):
 
     #calculating the end of index based on number of samples and ratios
     train_end = int(len(cleaned) * train_size)
@@ -117,7 +117,7 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     return mae
     
 
-def tune(main_df:pd.DataFrame=None, df_train:pd.DataFrame=None, df_val:pd.DataFrame=None):
+def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60):
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
     features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + [f"o3_plus_{i}h" for i in range(1,25)] + \
@@ -126,28 +126,29 @@ def tune(main_df:pd.DataFrame=None, df_train:pd.DataFrame=None, df_val:pd.DataFr
     # optuna callback for mlflow
     opt_tracker = MLflowCallback(
         tracking_uri=mlflow.get_tracking_uri(), 
-        metric_name="mae",
+        metric_name="mae", #auto logs runs
         
     )
 
     ''' need to configure for airflow container path '''
-    storage = f"sqlite:///{os.path.abspath 
-                                         (os.path.join(os.path.dirname(__file__), '../db/optuna.db'))}"
+    storage = "sqlite:///D:/pypipeline/db/optuna.db"
 
-    with mlflow.start_run(run_name="optuna_tuning"):
-        study = optuna.create_study(direction="minimize", storage=storage, study_name="xgb_aqi_study", 
-                                    load_if_exists=True)
+    # Allow nested runs so the callback can start a run per trial while an outer run is active
+   
+    study = optuna.create_study(direction="minimize", storage=storage, study_name="xgb_aqi_study", 
+                                load_if_exists=True)
 
-        # prepare data once (to speed up trials and ensure consistent validation)
-        if df_train is None or df_val is None:
-            df_train, df_val, _ = split(main_df)
+    # prepare data once (to speed up trials and ensure consistent validation)
+    if df_train is None or df_val is None:
+        df_train, df_val, _ = split(main_df)
 
-        obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
+    obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
 
-        study.optimize(obj, n_trials=60, callbacks=[opt_tracker])
+    study.optimize(obj, n_trials=trials, callbacks=[opt_tracker])
 
-        # save best params to json
-        best_params = study.best_params
+    # save best params to json
+    best_params = study.best_params
+
     return best_params
 
 def run_all():
@@ -155,20 +156,24 @@ def run_all():
     
 
 def train(horizons:int = 24,best_params:dict=None,
-         df_val:pd.DataFrame=None,df_train:pd.DataFrame=None, main_df:pd.DataFrame=None):
+         df_val:pd.DataFrame=None,df_train:pd.DataFrame=None,features_exclude
+              =[f"pm25_plus_{i}h" for i in range(1,25)] + \
+              [f"o3_plus_{i}h" for i in range(1,25)] + \
+                    ["segment_id","imputation_confidence"],):
     #training all models for 24 horizons using best params
-    if df_train is None or df_val is None:
-        df_train, df_val, = split(df=main_df)
-
+ 
     if best_params is None:
-        best_params = tune(main_df=main_df, df_train=df_train, df_val=df_val)
+        best_params = tune(df_train=df_train, df_val=df_val)
 
     val_metrics = {}
     models = {}
 
-    features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] +\
-    [f"o3_plus_{i}h" for i in range(1,25)] +\
-    ["segment_id"]
+    
+    # if "imputation_confidence" in df_train.columns and df_train["imputation_confidence"].dtype == object:
+    #     df_train["imputation_confidence"] = df_train["imputation_confidence"].astype("category")
+
+    # if "imputation_confidence" in df_val.columns and df_val["imputation_confidence"].dtype == object:
+    #     df_val["imputation_confidence"] = df_val["imputation_confidence"].astype("category")
 
 
     for h in range(1, horizons+1):
@@ -203,35 +208,70 @@ def train(horizons:int = 24,best_params:dict=None,
             val_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_val, reg.predict(X_val))
 
             mlflow.log_metric(f"val_mae_pm25_plus_{h}h", val_metrics[f"pm25_plus_{h}h"])
-            mlflow.xgboost.log_model(reg, f"pm25_plus_{h}h_model")
+            mlflow.log_params(best_params)
+            mlflow.log_params({"type": "xgboost"})#log model type
+
+            sign = infer_signature(X, reg.predict(X))# for model consistency and format
+            mlflow.xgboost.log_model(xgb_model= reg, registered_model_name 
+                                     = f"pm25_plus_{h}h_model",signature=sign,)
+            mlflow.end_run()
 
     return models, val_metrics
     
-def test():
-    pass
+def test(horizons:int = 24, models:dict=None,features_exclude
+              =[f"pm25_plus_{i}h" for i in range(1,25)] + \
+              [f"o3_plus_{i}h" for i in range(1,25)] + \
+                    ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None):
+    client = MlflowClient()
+    test_metrics = {}
+    models = {}
+
+    for h in range(1, horizons+1):
+        model_name = f"pm25_plus_{h}h_model"
+        model_version = client.get_latest_versions(name=model_name, stages=["None"])[0].version
+
+        model_uri = f"models:/{model_name}/{model_version}"
+        model = mlflow.pyfunc.load_model(model_uri)
+        test_mask = (df_test[f"pm25_plus_{h}h"] >= 0) & (df_test[f"pm25_plus_{h}h"] <=500)
+
+        y_test = df_test.loc[test_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        X_test = df_test.loc[test_mask].drop(columns=features_exclude).reset_index(drop=True)
+        test_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_test, model.predict(X_test))
+        models[f"pm25_plus_{h}h"] = model
+
+        mlflow.log_metric(f"test_mae_pm25_plus_{h}h", test_metrics[f"pm25_plus_{h}h"])
+
+        client.transition_model_version_stage(
+            name=f"pm25_plus_{h}h_model",
+            version=1,
+            stage="test"
+        )
+
+        mlflow.end_run()
+        return test_metrics
 
 
-def main():
+def main():#entry point for cli
     #set mlfluw tracking using relative path on a local server
     mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI'))
 
-    main_df = pd.read_csv("data/raw/cleaned_data.csv")
-    main_df = clean_and_target(main_df)
-    df_train, df_val, df_test = split(main_df)
+    main_df = pd.read_csv(r"D:\pypipeline\data\raw\static\hourly\aqi\limited\us_diplomatic_post_hourly.csv") #load raw data
+    main_df_cleaned = clean().run_clean(main_df) #initial cleaning on main data, feature extraction
+    df_train, df_val, df_test = split(main_df_cleaned) #splliting after cleaning
+
+    df_train_cleaned, df_val_cleaned, df_test_cleaned = clean_and_target(train=df_train, val=df_val, test=df_test) #clean and create targets
+   
 
     mlflow.set_experiment("Hourly_AQI_Tuning_Experiment")
-    best_params = tune(main_df=main_df, df_train=df_train, df_val=df_val)
+    best_params = tune(df_train=df_train_cleaned, df_val=df_val_cleaned, trials=5)
 
     mlflow.set_experiment("Hourly_AQI_Experiment") #setting differnt experiment for actual training
-    models, val_metrics = train(horizons=24, best_params=best_params, df_train=df_train, df_val=df_val)
+    models, val_metrics = train(horizons=24, best_params=best_params, df_train=df_train_cleaned, df_val=df_val_cleaned)
 
     print("Validation Metrics:", val_metrics)
+    test_metrics = test(horizons=24, models=models, df_test=df_test_cleaned)
+    print("Test Metrics:", test_metrics)
 
-
-
-    
-    tune()
-    mlflow.set_experiment("Hourly_AQI_Experiment")
 
 if __name__ == "__main__":
     main()
