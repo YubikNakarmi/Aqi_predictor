@@ -1,12 +1,27 @@
 # AQI predictor with Airflow
 
-This project uses historical and live data to predict AQI of Shankapark station in Kathmandu. All the data is stored is csv file no exteral database is used. 
+This project predicts hourly AQI for the Shankapark station (Kathmandu) using historical and live CSV data. Data is stored in CSV files (no external database required).
+
+## Libraries used
+- DVC for data versioning and storage in Azure blob storage
+- Airflow for orchestration
+- MLflow for model tracking
+- Optuna for hyperparameter tuning
+- XGBoost for model training
 
 ## Setting up
 
 ### DVC setup
+config remote path at /.dvc/config
+``` ini
+[[core]
+    remote = azureremote
+    autostage = true
+['remote "azureremote"']
+    url = azure://aqi/static
+```
 
-Dvc is setup with azure blob storage
+DVC is set up with Azure Blob Storage.
  ``` sh
 dvc pull 
 dvc get
@@ -14,18 +29,18 @@ dvc get
 
 ### Building docker images
 
-Build all the docker images first for running the ML scripts 
+Build the Docker images used by the pipeline:
 
 ``` sh
-docker build -t data_train:v1 -f scripts train.dockerfile .
+docker build -t data_train:v1 -f scripts/train.dockerfile .
 ```
 
 ``` sh
-docker build -t data_predict:v1 -f scripts predict.dockerfile scripts\predict.dockerfile
+docker build -t data_predict:v1 -f scripts/predict.dockerfile .
 ```
 
 ### Configuring docker-compose
-On data_train_dag.py setup the location of root directory. 
+In `data_train_dag.py`, set the root data directory (example):
 ```python
 host_path = "D:/pypipeline/data"
 ```
@@ -36,7 +51,7 @@ To make the `modules` package importable while you develop it, install the proje
 
 ```sh
 # from the project root
-venv/scripts/python.exe -m pip install -e .
+python -m pip install -e .
 ```
 
 What this does:
@@ -62,11 +77,11 @@ docker compose up
 ## MLflow 
 
 ### Setup
-Mlflow is setup with sqlite database and azure blob storage for artifacts. It is configured in docker-compose.yaml file to mount /db folder as a backend store (need to pull from dvc first), and artifacts store is setup with environment variable DEFAULT_ARTIFACT_ROOT (Azure blob storage).
+MLflow is set up with a SQLite backend and Azure Blob Storage for artifacts. The configuration (in `docker-compose.yaml`) mounts the `db/` folder as the backend store (after running `dvc pull`), and uses the `DEFAULT_ARTIFACT_ROOT` environment variable for artifact storage.
 
 ``` python
-artifacts_uri = os.environ["DEFAULT_ARTIFACT_ROOT"]#need to be set for mlflow server to register artifacts/models
-tracking = os.environ["MLFLOW_TRACKING_URI"] or "http://localhost:5000" #automatically logs in sqlite db locally
+artifacts_uri = os.environ.get("DEFAULT_ARTIFACT_ROOT")  # must be set so MLflow can register artifacts/models
+tracking = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")  # default to local server
 mlflow.set_tracking_uri(tracking)
 ```
 
@@ -83,7 +98,7 @@ mlflow server --backend-store-uri sqlite:///db/mlflow.db --default-artifact-root
 ```
 ### What mlflow stores
 - Parameters and metrics of each training run
-- Parameters and metrics of model tuning with optuna
+- Parameters and metrics of model tuning with Optuna
 - Models registered in model registry (all 24 horizons)
   
 ## Secrets
@@ -92,7 +107,7 @@ mlflow server --backend-store-uri sqlite:///db/mlflow.db --default-artifact-root
 ```
 OPEN_WEATHER_API_KEY = ----
 ```
-furthermore locally azure blob key was also used for dvc
+Additionally, you may need the Azure Blob storage key locally for DVC configuration.
 
 ## Notebooks
 Notebooks can be found on /notebooks directory, which contains all the experiments and steps for training, datacleaning and visuals.
@@ -104,3 +119,10 @@ python src/scripts/train_hourly.py
 ```
 If you want to run on CLI
 
+## Secrets
+.env file was used for storing environment variable for api key
+
+### env variables required for project
+- OPEN_WEATHER_API_KEY : API key for open weather map
+- AZURE_STORAGE_CONNECTION_STRING : Azure blob storage connection string for dvc and mlflow artifacts
+- MLFLOW_TRACKING_URI : mlflow tracking server uri
