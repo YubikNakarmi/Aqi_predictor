@@ -1,3 +1,13 @@
 /data
 /.venv
 /.vscode
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Log files
+*.log
+logs/
