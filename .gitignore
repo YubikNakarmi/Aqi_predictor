@@ -4,3 +4,4 @@
 .env 
 CHANGES.md
 __pycache__/
+/db
