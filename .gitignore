@@ -6,3 +6,5 @@ CHANGES.md
 __pycache__/
 /db
 /logs
+/pypipeline.egg-info
+/secrets

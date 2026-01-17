@@ -1,33 +1,16 @@
-# requirements.txt for Aqi_predictor
-# Requires Python 3.9+
+click==8.1.8
+docker==7.1.0
+mlflow==3.2.0
+mlflow-skinny==3.2.0
+mlflow-tracing==3.2.0
+numpy==2.3.2
+optuna==4.6.0
+optuna-integration==4.6.0
+pandas==2.3.1
+requests==2.32.4
+scikit-learn==1.7.1
+xgboost==3.0.5
+azure-storage-blob==12.26.0
+dvc==3.63.0
+dvc-azure==3.1.0
 
-# Core
-numpy==1.24.3
-pandas==1.5.3
-scipy==1.9.3
-
-# Machine learning
-scikit-learn==1.2.2
-xgboost==1.7.6
-lightgbm==3.3.5
-optuna==3.2.0
-
-# Utilities & I/O
-joblib==1.2.0
-cloudpickle==2.2.1
-tqdm==4.65.0
-python-dotenv==0.21.0
-requests==2.28.2
-pydantic==1.10.7
-
-# Visualization
-matplotlib==3.6.3
-seaborn==0.12.2
-
-# Experiment tracking / model registry (optional)
-mlflow==2.3.2
-
-# Development & testing (optional)
-pytest==7.3.1
-black==23.3.0
-flake8==5.0.4

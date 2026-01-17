@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: aqi-mlflow:latest
+    container_name: mlflow-server
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-db:/mlflow/db
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/db/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=wasbs://mlflow@yubikaqidata.blob.core.windows.net/
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/db/mlflow.db
+      --default-artifact-root wasbs://mlflow@yubikaqidata.blob.core.windows.net/
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - aqi_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 1g
+    memswap_limit: 1g
+
+  trainer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.trainer
+    image: aqi-trainer:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ./models:/models
+      - optuna-db:/optuna/db
+    environment:
+      - MLFLOW_TRACKING_URI=http://0.0.0.0:5000
+      - DATA_RAW_CSV=/data/raw/static/hourly/aqi/us_diplomatic_post_hourly.csv
+      - DATA_PROCESSED_DIR=/data/processed/hourly/us_diplomatic_post_hourly/
+      - ARTIFACTS_DIR=/db/artifacts
+      - HORIZONS=24
+      - TUNING_TRIALS=30
+      - OPTUNA_STORAGE=sqlite:///optuna/db/optuna.db
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
+    mem_limit: 2g
+    memswap_limit: 2g
+
+networks:
+  aqi_network:
+    driver: bridge
+volumes:
+  mlflow-db:
+    driver: local
+  optuna-db:
+    driver: local

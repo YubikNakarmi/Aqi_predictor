@@ -26,17 +26,22 @@ DVC is set up with Azure Blob Storage.
 dvc pull 
 dvc get
  ```
+ #### Tracked files with DVC
+- data/raw/
+- data/processed/
+- db/mlflow.db
+- db/optuna_study.db
+
+
 
 ### Building docker images
 
 Build the Docker images used by the pipeline:
 
 ``` sh
-docker build -t data_train:v1 -f scripts/train.dockerfile .
-```
+docker compose -f .\docker-compose.train.yaml build mlflow
+docker compose -f .\docker-compose.train.yaml up -d mlflow
 
-``` sh
-docker build -t data_predict:v1 -f scripts/predict.dockerfile .
 ```
 
 ### Configuring docker-compose
@@ -51,7 +56,7 @@ To make the `modules` package importable while you develop it, install the proje
 
 ```sh
 # from the project root
-python -m pip install -e .
+.venv/scripts/python.exe -m pip install -e .
 ```
 
 What this does:

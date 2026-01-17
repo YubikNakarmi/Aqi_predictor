@@ -1,0 +1,58 @@
+import pandas as pd
+import os
+from scripts.train_hourly import split,clean_and_target
+from modules.data_hourly_preprocessing import DataCleaner as clean
+import datetime
+import yaml
+
+DATA_PROCESSED_PATH = os.environ.get("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
+DATA_RAW_PATH = os.environ.get("DATA_RAW_PATH", r"data/raw/static/hourly/us_diplomatic_post_hourly.csv")
+HORIZON = int(os.environ.get("HORIZON", 24))
+TRAIN_SPLIT= float(os.environ.get("TRAIN_SPLIT", 0.7))
+VAL_SPLIT= float(os.environ.get("VAL_SPLIT", 0.15))
+TEST_SPLIT= float(os.environ.get("TEST_SPLIT", 0.15))
+
+
+def metadata(dvc_file_path)->dict:
+
+    with open(dvc_file_path, 'r') as f:
+        dvc_data = yaml.safe_load(f)
+
+    metadata = {
+        "Created date": str(datetime.datetime.now()),
+        "Data source": DATA_RAW_PATH,
+        "Data processed path": DATA_PROCESSED_PATH,
+        "Horizon": HORIZON,
+        "processed_data_md5": dvc_data['outs'][0]['md5'],
+        "split_ratios": {
+            "train_split": TRAIN_SPLIT,
+            "val_split": VAL_SPLIT,
+            "test_split": TEST_SPLIT
+        }
+    }
+
+
+def main(data_raw_path, data_processed_path, horizon, train_split, val_split, test_split):
+    # Load raw data from env path
+    df = pd.read_csv(data_raw_path)
+    print(f"Raw data loaded from {data_raw_path} with shape {df.shape}")
+    main_df_cleaned = clean().run_clean(df)
+
+    # Split the data based on env ratios
+    train_df, val_df, test_df = split(main_df_cleaned, train_size=train_split, val_size=val_split, test_size=test_split)
+
+    # Clean and create target variables
+    train_cleaned, val_cleaned, test_cleaned = clean_and_target(horizon=horizon, train=train_df, val=val_df, test=test_df)
+
+    # Save processed data
+    os.makedirs(data_processed_path, exist_ok=True)
+    train_cleaned.to_parquet(os.path.join(data_processed_path, 'train_processed.parquet'))
+    val_cleaned.to_parquet(os.path.join(data_processed_path, 'val_processed.parquet'))
+    test_cleaned.to_parquet(os.path.join(data_processed_path, 'test_processed.parquet'))
+    print(f"Processed data saved to {data_processed_path}")
+
+    metadata(dvc_file_path="/data.dvc")
+
+
+if __name__ == '__main__':    
+    main()

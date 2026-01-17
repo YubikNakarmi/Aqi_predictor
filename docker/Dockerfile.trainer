@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /PYPIPELINE
+
+
+RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && apt-get autoremove -y && apt-get clean
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir \
+    mlflow \
+    optuna \
+    optuna-integration[mlflow] \
+    xgboost \
+    scikit-learn \
+    pandas \
+    numpy \
+    dvc[azure]
+
+
+COPY data/ ./data/
+COPY pyproject.toml setup.cfg ./
+COPY src/ ./src/
+COPY hourly_pipeline/ ./hourly_pipeline/
+
+RUN pip install --no-cache-dir -e .
+
+
+

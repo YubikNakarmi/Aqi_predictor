@@ -1,0 +1,45 @@
+import pandas as pd
+import xgboost as xgb
+import mlflow
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import os
+from scripts.train_hourly import tune, train
+import json
+import click
+
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+VAL_PREDICTIONS_PATH = os.getenv("VAL_PREDICTIONS_PATH", "val_predictions.csv")
+DATA_VAL_PATH = os.getenv("DATA_VAL_PATH", r"data/processed/hourly/us_paro_hourly/")
+DATA_TRAIN_PATH = os.getenv("DATA_TRAIN_PATH", r"data/processed/hourly/us_paro_hourly/")
+OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"db/optuna.db")
+TRIALS = int(os.getenv("TRIALS", 60))
+ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "/data/artifacts/")
+
+
+
+
+def mlflow_sanity_check():
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    with mlflow.start_run(run_name="sanity_check"):
+        mlflow.log_param("sanity_check_param", 42)
+        mlflow.log_metric("sanity_check_metric", 3.14)
+
+
+def main(data_val_path, data_train_path, mlflow_tracking_uri, optuna_path, trials, artifacts_path):
+    mlflow.set_tracking_uri = mlflow_tracking_uri
+    mlflow_sanity_check()
+
+    val_df = pd.read_parquet(f"{data_val_path}/val_processed.parquet")
+    train_df = pd.read_parquet(f"{data_train_path}/train_processed.parquet")
+    print("Data loaded for tuning\n")
+
+    mlflow.set_experiment("xgb_aqi_hourly_tuning")
+    best_params = tune(df_train=train_df, df_val=val_df,trials=TRIALS)
+    print("Best hyperparameters found: ", best_params)
+
+    with open(f"{artifacts_path}/best_params.json", "w") as f:
+        json.dump(best_params, f)
+    print("tuning complete")
+
+if __name__ == "__main__":
+    main()

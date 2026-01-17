@@ -139,8 +139,7 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60):
                                 load_if_exists=True)
 
     # prepare data once (to speed up trials and ensure consistent validation)
-    if df_train is None or df_val is None:
-        df_train, df_val, _ = split(main_df)
+   
 
     obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
 
@@ -213,7 +212,7 @@ def train(horizons:int = 24,best_params:dict=None,
 
             sign = infer_signature(X, reg.predict(X))# for model consistency and format
             mlflow.xgboost.log_model(xgb_model= reg, registered_model_name 
-                                     = f"pm25_plus_{h}h_model",signature=sign,)
+                                     = f"pm25_plus_{h}h_model",signature=sign)
             mlflow.end_run()
 
     return models, val_metrics
