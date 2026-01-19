@@ -117,7 +117,7 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     return mae
     
 
-def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60):
+def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,optuna_path:str="db/optuna.db"):
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
     features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + [f"o3_plus_{i}h" for i in range(1,25)] + \
@@ -131,7 +131,7 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60):
     )
 
     ''' need to configure for airflow container path '''
-    storage = "sqlite:///D:/pypipeline/db/optuna.db"
+    storage = f"sqlite:///{optuna_path}"
 
     # Allow nested runs so the callback can start a run per trial while an outer run is active
    
@@ -150,8 +150,6 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60):
 
     return best_params
 
-def run_all():
-    mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI')
     
 
 def train(horizons:int = 24,best_params:dict=None,

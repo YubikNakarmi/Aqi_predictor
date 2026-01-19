@@ -1,8 +1,8 @@
 click==8.1.8
 docker==7.1.0
-mlflow==3.2.0
-mlflow-skinny==3.2.0
-mlflow-tracing==3.2.0
+mlflow==3.5.0
+mlflow-skinny==3.5.0
+mlflow-tracing==3.5.0
 numpy==2.3.2
 optuna==4.6.0
 optuna-integration==4.6.0

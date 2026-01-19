@@ -16,9 +16,11 @@ services:
     environment:
       - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/db/mlflow.db
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=wasbs://mlflow@yubikaqidata.blob.core.windows.net/
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PW=${MYSQL_PW}
     command: >
       mlflow server
-      --backend-store-uri sqlite:///mlflow/db/mlflow.db
+      --backend-store-uri mysql+pymysql://mlflow_user:${MYSQL_PW}@${MYSQL_HOST}:3306/mlflow_backend
       --default-artifact-root wasbs://mlflow@yubikaqidata.blob.core.windows.net/
       --host 0.0.0.0
       --port 5000
@@ -26,7 +28,7 @@ services:
       - aqi_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:5000/"]
       interval: 10s
       timeout: 5s
       retries: 3
