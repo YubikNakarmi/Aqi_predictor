@@ -1,1 +1,3 @@
 *.ipynb linguist-documentation
+/docker/** linguist-language=Dockerfile
+/docker/** linguist-vendored=false
