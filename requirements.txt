@@ -13,4 +13,5 @@ xgboost==3.0.5
 azure-storage-blob==12.26.0
 dvc==3.63.0
 dvc-azure==3.1.0
+pymysql==1.1.0
 

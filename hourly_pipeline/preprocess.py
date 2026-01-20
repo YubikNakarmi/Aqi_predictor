@@ -32,26 +32,26 @@ def metadata(dvc_file_path)->dict:
     }
 
 
-def main(data_raw_path, data_processed_path, horizon, train_split, val_split, test_split):
+def main():
     # Load raw data from env path
-    df = pd.read_csv(data_raw_path)
-    print(f"Raw data loaded from {data_raw_path} with shape {df.shape}")
+    df = pd.read_csv(DATA_RAW_PATH)
+    print(f"Raw data loaded from {DATA_RAW_PATH} with shape {df.shape}")
     main_df_cleaned = clean().run_clean(df)
 
     # Split the data based on env ratios
-    train_df, val_df, test_df = split(main_df_cleaned, train_size=train_split, val_size=val_split, test_size=test_split)
+    train_df, val_df, test_df = split(main_df_cleaned, train_size=TRAIN_SPLIT, val_size=VAL_SPLIT, test_size=TEST_SPLIT)
 
     # Clean and create target variables
-    train_cleaned, val_cleaned, test_cleaned = clean_and_target(horizon=horizon, train=train_df, val=val_df, test=test_df)
+    train_cleaned, val_cleaned, test_cleaned = clean_and_target(horizon=HORIZON, train=train_df, val=val_df, test=test_df)
 
     # Save processed data
-    os.makedirs(data_processed_path, exist_ok=True)
-    train_cleaned.to_parquet(os.path.join(data_processed_path, 'train_processed.parquet'))
-    val_cleaned.to_parquet(os.path.join(data_processed_path, 'val_processed.parquet'))
-    test_cleaned.to_parquet(os.path.join(data_processed_path, 'test_processed.parquet'))
-    print(f"Processed data saved to {data_processed_path}")
+    os.makedirs(DATA_PROCESSED_PATH, exist_ok=True)
+    train_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'train_processed.parquet'))
+    val_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'val_processed.parquet'))
+    test_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'test_processed.parquet'))
+    print(f"Processed data saved to {DATA_PROCESSED_PATH}")
 
-    metadata(dvc_file_path="/data.dvc")
+    metadata(dvc_file_path="data.dvc")
 
 
 if __name__ == '__main__':    

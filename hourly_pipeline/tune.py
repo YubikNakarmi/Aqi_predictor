@@ -7,7 +7,7 @@ from scripts.train_hourly import tune, train
 import json
 import click
 
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://0.0.0.0:5000")
 VAL_PREDICTIONS_PATH = os.getenv("VAL_PREDICTIONS_PATH", "val_predictions.csv")
 DATA_PROCESSED_PATH = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
 OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"db/optuna.db")
@@ -25,8 +25,9 @@ def mlflow_sanity_check():
 
 
 def main():
-    mlflow.set_tracking_uri = MLFLOW_TRACKING_URI
+    
     mlflow_sanity_check()
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
     val_df = pd.read_parquet(f"{DATA_PROCESSED_PATH}/val_processed.parquet")
     train_df = pd.read_parquet(f"{DATA_PROCESSED_PATH}/train_processed.parquet")

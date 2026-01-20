@@ -16,12 +16,11 @@ COPY requirements.txt /opt/pypipeline/
 
 # Install package 
 RUN pip install --no-cache-dir -e /opt/pypipeline[ml] \
-    && pip install --no-cache-dir mlflow boto3 mlflow[azure]  optuna-integration[mlflow]\
+    && pip install --no-cache-dir  optuna-integration[mlflow]\
     && pip install --no-cache-dir requirements.txt
 
 # Defaults 
 ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags
-ENV MLFLOW_TRACKING_URI=http://mlflow:5000
 ENV PYTHONUNBUFFERED=1
 
 

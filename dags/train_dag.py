@@ -32,6 +32,7 @@ with DAG(dag_id="aqi_data_dag",
         network_mode='aqi_network',
         mounts=mounts,
         command = "python hourly_pipeline/preprocess.py",
+        mount_temp_dir=False,
     ),
     tune = DockerOperator(
         task_id='tune_hyperparameters',
@@ -42,6 +43,7 @@ with DAG(dag_id="aqi_data_dag",
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
+        mount_temp_dir=False,
     ),
     train = DockerOperator(
         task_id='train_model',
@@ -52,6 +54,7 @@ with DAG(dag_id="aqi_data_dag",
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
+        mount_temp_dir=False,
     )
             
     

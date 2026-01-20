@@ -9,8 +9,9 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
     mlflow[aws,azure,gcp] \
     azure-storage-blob \
-    azure-identity
+    azure-identity\
+    pymysql \
+    
 
-EXPOSE 5000
 
 
