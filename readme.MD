@@ -11,6 +11,27 @@ This project predicts hourly AQI for the Shankapark station (Kathmandu) using hi
 
 ## Setting up
 
+### Environment Configuration
+
+1. Copy the environment template to create your `.env` file:
+   ```sh
+   cp .env.template .env
+   ```
+
+2. Edit `.env` and fill in your own values:
+   - **API Keys**: `OPEN_WEATHER_API_KEY` for OpenWeather data
+   - **Azure Storage**: `AZURE_STORAGE_CONNECTION_STRING` and `MLFLOW_ARTIFACT_ROOT`
+   - **Database**: `MYSQL_HOST`, `MYSQL_PW`, `MYSQLURL`, and `OPTUNA_PATH`
+   - **Paths**: Adjust `DATA_PROCESSED_PATH` and `PREDICTIONS_DIR` as needed
+
+3. Example for local setup with MySQL on host:
+   ```dotenv
+   MYSQL_HOST=host.docker.internal
+   MYSQLURL=mysql+pymysql://root:your_password@host.docker.internal:3306/mlflow_backend
+   ```
+
+   **Note**: Use `host.docker.internal` on Windows/Mac to access services on your host machine, or use the service name if MySQL is in a container.
+
 ### DVC setup
 config remote path at /.dvc/config
 ``` ini

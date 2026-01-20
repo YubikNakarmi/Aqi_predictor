@@ -4,6 +4,7 @@ from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.operators.bash import BashOperator
 from docker.types import Mount
 import os
 import subprocess
@@ -55,6 +56,21 @@ with DAG(dag_id="aqi_data_dag",
         network_mode='aqi_network',
         mounts=mounts,
         mount_temp_dir=False,
+    ),
+    evaluate = DockerOperator(
+        task_id='evaluate_model',
+        image='aqi-trainer:latest',
+        api_version='auto',
+        auto_remove=True,
+        command='python -m hourly_pipeline.eval',
+        docker_url='unix://var/run/docker.sock',
+        network_mode='aqi_network',
+        mounts=mounts,
+        mount_temp_dir=False,
+    ),
+    dvc_push = BashOperator(
+        task_id='dvc_push',
+        bash_command='dvc add &&''dvc push',
     )
             
     
