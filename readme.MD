@@ -2,6 +2,30 @@
 
 This project predicts hourly AQI for the Shankapark station (Kathmandu) using historical and live CSV data. Data is stored in CSV files (no external database required).
 
+## Table of Contents
+- [Libraries used](#libraries-used)
+- [Setting up](#setting-up)
+  - [Environment Configuration](#environment-configuration)
+  - [DVC setup](#dvc-setup)
+  - [Building docker images](#building-docker-images)
+  - [Configuring docker-compose](#configuring-docker-compose)
+- [Development (editable install)](#development-editable-install)
+- [Running](#running)
+- [MLflow](#mlflow)
+  - [Setup](#setup)
+  - [Running MLflow server](#running-mlflow-server)
+  - [What mlflow stores](#what-mlflow-stores)
+- [Notebooks](#notebooks)
+- [Training Strategy](#training-strategy)
+  - [Customizable Target Training](#customizable-target-training)
+  - [Environment Variables for Customization](#environment-variables-for-customization)
+  - [Quick Usage Examples](#quick-usage-examples)
+  - [Python API Usage](#python-api-usage)
+  - [Common Value Ranges by Pollutant](#common-value-ranges-by-pollutant)
+  - [Model Naming Convention](#model-naming-convention)
+  - [Running from CLI](#running-from-cli)
+- [Secrets](#secrets)
+
 ## Libraries used
 - DVC for data versioning and storage in Azure blob storage
 - Airflow for orchestration
@@ -140,6 +164,103 @@ Notebooks can be found on /notebooks directory, which contains all the experimen
 
 ## Training Strategy
 The training is done for each horizon from 1 to 24 hours separately. Each horizon has its own model trained and logged in mlflow model registry. The hyperparameter tuning is done with optuna for each horizon separately as well. The training script can be found on /src/scripts/train_hourly.py
+
+### Customizable Target Training
+The library supports training models for any pollutant target (PM2.5, O3, PM10, NO2, etc.) with configurable value ranges.
+
+#### Environment Variables for Customization
+```bash
+# For preprocessing - create targets for multiple pollutants
+export TARGET_COLS="pm25,o3,pm10"  # Comma-separated list
+export HORIZON=24
+export DATA_PROCESSED_PATH="data/processed/hourly/..."
+
+# For training - train models for a specific pollutant
+export TARGET_COL="pm25"           # Single target: pm25, o3, pm10, etc.
+export VALUE_MIN=0                 # Minimum valid value
+export VALUE_MAX=500               # Maximum valid value
+export MLFLOW_TRACKING_URI="http://localhost:5000"
+```
+
+#### Quick Usage Examples
+
+**Train PM2.5 Models (default):**
+```bash
+export TARGET_COL="pm25"
+export VALUE_MIN=0
+export VALUE_MAX=500
+python hourly_pipeline/train.py
+```
+
+**Train O3 (Ozone) Models:**
+```bash
+export TARGET_COL="o3"
+export VALUE_MIN=0
+export VALUE_MAX=300
+python hourly_pipeline/train.py
+```
+
+**Train PM10 Models:**
+```bash
+export TARGET_COL="pm10"
+export VALUE_MIN=0
+export VALUE_MAX=600
+python hourly_pipeline/train.py
+```
+
+#### Python API Usage
+```python
+from scripts.train_hourly import train, tune, clean_and_target
+
+# Prepare data for multiple targets
+train_df, val_df, test_df = clean_and_target(
+    horizon=24,
+    train=train_raw,
+    val=val_raw,
+    test=test_raw,
+    target_cols=["pm25", "o3"]  # Create targets for both pollutants
+)
+
+# Tune hyperparameters for specific target
+best_params = tune(
+    df_train=train_df,
+    df_val=val_df,
+    trials=60,
+    target_col="pm25",
+    value_range=(0, 500),
+    horizons=24
+)
+
+# Train models for specific target
+models, metrics, sig = train(
+    horizons=24,
+    best_params=best_params,
+    df_train=train_df,
+    df_val=val_df,
+    target_col="pm25",
+    value_range=(0, 500)
+)
+```
+
+#### Common Value Ranges by Pollutant
+| Pollutant | Range | Unit | Notes |
+|-----------|-------|------|-------|
+| PM2.5 | (0, 500) | AQI | Fine particles - default |
+| PM10 | (0, 600) | AQI | Coarser particles |
+| O3 | (0, 300) | ppb | Ozone concentration |
+| NO2 | (0, 200) | ppb | Nitrogen dioxide |
+| SO2 | (0, 200) | ppb | Sulfur dioxide |
+| CO | (0, 50) | ppm | Carbon monoxide |
+
+#### Model Naming Convention
+Models are automatically named with the target pollutant:
+- PM2.5: `pm25_plus_1h_model`, `pm25_plus_2h_model`, ..., `pm25_plus_24h_model`
+- O3: `o3_plus_1h_model`, `o3_plus_2h_model`, ..., `o3_plus_24h_model`
+- PM10: `pm10_plus_1h_model`, ..., `pm10_plus_24h_model`
+
+MLflow experiments are also named accordingly: `xgb_pm25_hourly_training`, `xgb_o3_hourly_training`, etc.
+
+#### Running from CLI
 ``` sh
 python src/scripts/train_hourly.py
 ```
