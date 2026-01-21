@@ -11,6 +11,8 @@ HORIZON = int(os.environ.get("HORIZON", 24))
 TRAIN_SPLIT= float(os.environ.get("TRAIN_SPLIT", 0.7))
 VAL_SPLIT= float(os.environ.get("VAL_SPLIT", 0.15))
 TEST_SPLIT= float(os.environ.get("TEST_SPLIT", 0.15))
+# Target columns to create - comma separated, e.g., "pm25,o3" or "pm25" for single target
+TARGET_COLS = os.environ.get("TARGET_COLS", "pm25,o3").split(",")
 
 
 def metadata(dvc_file_path)->dict:
@@ -41,8 +43,14 @@ def main():
     # Split the data based on env ratios
     train_df, val_df, test_df = split(main_df_cleaned, train_size=TRAIN_SPLIT, val_size=VAL_SPLIT, test_size=TEST_SPLIT)
 
-    # Clean and create target variables
-    train_cleaned, val_cleaned, test_cleaned = clean_and_target(horizon=HORIZON, train=train_df, val=val_df, test=test_df)
+    # Clean and create target variables for specified targets
+    train_cleaned, val_cleaned, test_cleaned = clean_and_target(
+        horizon=HORIZON, 
+        train=train_df, 
+        val=val_df, 
+        test=test_df,
+        target_cols=TARGET_COLS
+    )
 
     # Save processed data
     os.makedirs(DATA_PROCESSED_PATH, exist_ok=True)

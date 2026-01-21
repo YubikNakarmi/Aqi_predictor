@@ -14,20 +14,22 @@ from mlflow.tracking import MlflowClient
 
 
 def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame = None, 
-                     test: pd.DataFrame = None ):
+                     test: pd.DataFrame = None, target_cols: list = None ):
     # cleaning the data with feature engineering after splitting the data
     train_df_cleaned = clean().run_from_cleaned(train)
     val_df_cleaned = clean().run_from_cleaned(val)
     test_df_cleaned = clean().run_from_cleaned(test)
 
-    # creating targets horizons for pm25 and o3 using targets from df
+    # Default to pm25 and o3 if not specified
+    if target_cols is None:
+        target_cols = ["pm25", "o3"]
+    
+    # creating targets horizons for specified targets using targets from df
     for targets in range(1,horizon+1):
-        train_df_cleaned[f"pm25_plus_{targets}h"] = (train_df_cleaned.groupby("segment_id")["pm25_target"].shift(-targets))
-        train_df_cleaned[f"o3_plus_{targets}h"] = train_df_cleaned.groupby("segment_id")["o3_target"].shift(-targets)
-        val_df_cleaned[f"pm25_plus_{targets}h"] = (val_df_cleaned.groupby("segment_id")["pm25_target"].shift(-targets))
-        val_df_cleaned[f"o3_plus_{targets}h"] = val_df_cleaned.groupby("segment_id")["o3_target"].shift(-targets)
-        test_df_cleaned[f"pm25_plus_{targets}h"] = (test_df_cleaned.groupby("segment_id")["pm25_target"].shift(-targets))
-        test_df_cleaned[f"o3_plus_{targets}h"] = test_df_cleaned.groupby("segment_id")["o3_target"].shift(-targets)
+        for target in target_cols:
+            train_df_cleaned[f"{target}_plus_{targets}h"] = (train_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
+            val_df_cleaned[f"{target}_plus_{targets}h"] = (val_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
+            test_df_cleaned[f"{target}_plus_{targets}h"] = (test_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
     
     return train_df_cleaned, val_df_cleaned, test_df_cleaned
 
@@ -57,7 +59,7 @@ def split(cleaned:pd.DataFrame,train_size:float = 0.7, val_size:float = 0.15, te
 def objective(trial, df_train=None, df_val=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id",],h:int=1):
+                    ["segment_id",],h:int=1, target_col:str="pm25", value_range:tuple=(0,500)):
     #Preparing data for 1 hour ahead prediction
     #Tuning hyperparamaters
 
@@ -86,19 +88,22 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     if "imputation_confidence" in df_val.columns and df_val["imputation_confidence"].dtype == object:
         df_val["imputation_confidence"] = df_val["imputation_confidence"].astype("category")
 
+    target_key = f"{target_col}_plus_{h}h"
+    min_val, max_val = value_range
+    
     #using mask to filter null data and extremes
-    train_mask = df_train[f"pm25_plus_{h}h"].notnull() & (df_train[f"pm25_plus_{h}h"] >=0) \
-    & (df_train[f"pm25_plus_{h}h"] <=500)
+    train_mask = df_train[target_key].notnull() & (df_train[target_key] >= min_val) \
+    & (df_train[target_key] <= max_val)
 
-    eval_mask = df_val[f"pm25_plus_{h}h"].notnull() & (df_val[f"pm25_plus_{h}h"] >=0) \
-    & (df_val[f"pm25_plus_{h}h"] <=500)
+    eval_mask = df_val[target_key].notnull() & (df_val[target_key] >= min_val) \
+    & (df_val[target_key] <= max_val)
 
     # setting targets and features, by using train mask and dropping index
-    y = df_train.loc[train_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+    y = df_train.loc[train_mask, target_key].reset_index(drop=True).astype(float)
     X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
 
     #same with val set
-    y_val = df_val.loc[eval_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+    y_val = df_val.loc[eval_mask, target_key].reset_index(drop=True).astype(float)
     X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
 
    #fitting model using regression and eveluation
@@ -118,11 +123,14 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     
 
 def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
-         optuna_path:str="sqlite:///db/optuna.db",callback:MLflowCallback=None):
+         optuna_path:str="sqlite:///db/optuna.db",callback:MLflowCallback=None,
+         target_col:str="pm25", value_range:tuple=(0,500), horizons:int=24):
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
-    features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id",]
+    features_exclude =[f"{target_col}_plus_{i}h" for i in range(1,horizons+1)] + \
+                     [f"o3_plus_{i}h" for i in range(1,horizons+1)] + \
+                     [f"pm25_plus_{i}h" for i in range(1,horizons+1)] + \
+                     ["segment_id",]
 
 
     ''' need to configure for airflow container path '''
@@ -130,13 +138,14 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
 
     # Allow nested runs so the callback can start a run per trial while an outer run is active
    
-    study = optuna.create_study(direction="minimize", storage=storage, study_name="xgb_aqi_study", 
+    study = optuna.create_study(direction="minimize", storage=storage, study_name=f"xgb_{target_col}_study", 
                                 load_if_exists=True)
 
     # prepare data once (to speed up trials and ensure consistent validation)
    
 
-    obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
+    obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude,
+                 target_col=target_col, value_range=value_range)
 
     study.optimize(obj, n_trials=trials, callbacks=[callback])
 
@@ -151,11 +160,13 @@ def train(horizons:int = 24,best_params:dict=None,
          df_val:pd.DataFrame=None,df_train:pd.DataFrame=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id","imputation_confidence"],):
+                    ["segment_id","imputation_confidence"],
+         target_col:str="pm25", value_range:tuple=(0,500)):
     #training all models for 24 horizons using best params
  
     if best_params is None:
-        best_params = tune(df_train=df_train, df_val=df_val)
+        best_params = tune(df_train=df_train, df_val=df_val, target_col=target_col, 
+                          value_range=value_range, horizons=horizons)
 
     val_metrics = {}
     models = {}
@@ -167,25 +178,27 @@ def train(horizons:int = 24,best_params:dict=None,
     if "imputation_confidence" in df_val.columns and df_val["imputation_confidence"].dtype == object:
         df_val["imputation_confidence"] = df_val["imputation_confidence"].astype("category")
 
+    min_val, max_val = value_range
 
     for h in range(1, horizons+1):
+        target_key = f"{target_col}_plus_{h}h"
+        
+        train_mask = df_train[target_key].notnull() & (df_train[target_key] >= min_val) \
+        & (df_train[target_key] <= max_val)
 
-        train_mask = df_train[f"pm25_plus_{h}h"].notnull() & (df_train[f"pm25_plus_{h}h"] >=0) \
-        & (df_train[f"pm25_plus_{h}h"] <=500)
-
-        eval_mask = df_val[f"pm25_plus_{h}h"].notnull() & (df_val[f"pm25_plus_{h}h"] >=0) \
-        & (df_val[f"pm25_plus_{h}h"] <=500)
+        eval_mask = df_val[target_key].notnull() & (df_val[target_key] >= min_val) \
+        & (df_val[target_key] <= max_val)
         #using only valid data points
-        y = df_train.loc[train_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        y = df_train.loc[train_mask, target_key].reset_index(drop=True).astype(float)
         X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
 
 
-        y_val = df_val.loc[eval_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        y_val = df_val.loc[eval_mask, target_key].reset_index(drop=True).astype(float)
         X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
 
         # Skip horizons with insufficient data
         if y.empty or y_val.empty:
-            print(f"Skipping horizon {h} due to insufficient data (train={len(y)}, val={len(y_val)})")
+            print(f"Skipping horizon {h} for {target_col} due to insufficient data (train={len(y)}, val={len(y_val)})")
             continue
 
         reg = xgb.XGBRegressor(**best_params)
@@ -196,8 +209,8 @@ def train(horizons:int = 24,best_params:dict=None,
                     verbose=False,
         )
 
-        models[f"pm25_plus_{h}h"] = reg
-        val_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_val, reg.predict(X_val))
+        models[target_key] = reg
+        val_metrics[target_key] = mean_absolute_error(y_val, reg.predict(X_val))
         sign = infer_signature(X, reg.predict(X))
 
             
@@ -206,34 +219,28 @@ def train(horizons:int = 24,best_params:dict=None,
 def test(horizons:int = 24, models:dict=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None):
-    client = MlflowClient()
+                    ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None, 
+         target_col:str="pm25", value_range:tuple=(0,500)):
     test_metrics = {}
-    models = {}
+    min_val, max_val = value_range
 
     for h in range(1, horizons+1):
-        model_name = f"pm25_plus_{h}h_model"
-        model_version = client.get_latest_versions(name=model_name, stages=["None"])[0].version
+        target_key = f"{target_col}_plus_{h}h"
+        model = models.get(target_key)
+        if model is None:
+            continue
+            
+        test_mask = (df_test[target_key] >= min_val) & (df_test[target_key] <= max_val)
 
-        model_uri = f"models:/{model_name}/{model_version}"
-        model = mlflow.pyfunc.load_model(model_uri)
-        test_mask = (df_test[f"pm25_plus_{h}h"] >= 0) & (df_test[f"pm25_plus_{h}h"] <=500)
-
-        y_test = df_test.loc[test_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        y_test = df_test.loc[test_mask, target_key].reset_index(drop=True).astype(float)
         X_test = df_test.loc[test_mask].drop(columns=features_exclude).reset_index(drop=True)
-        test_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_test, model.predict(X_test))
-        models[f"pm25_plus_{h}h"] = model
+        
+        if y_test.empty:
+            continue
+            
+        test_metrics[target_key] = mean_absolute_error(y_test, model.predict(X_test))
 
-        mlflow.log_metric(f"test_mae_pm25_plus_{h}h", test_metrics[f"pm25_plus_{h}h"])
-
-        client.transition_model_version_stage(
-            name=f"pm25_plus_{h}h_model",
-            version=1,
-            stage="test"
-        )
-
-        mlflow.end_run()
-        return test_metrics
+    return test_metrics
 
 
 def main():#entry point for cli
