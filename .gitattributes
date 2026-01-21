@@ -1,3 +1,31 @@
 *.ipynb linguist-documentation
 /docker/** linguist-language=Dockerfile
 /docker/** linguist-vendored=false
+
+# Mark Dockerfiles under /docker as Dockerfile so GitHub Linguist counts them
+/docker/**/Dockerfile linguist-language=Dockerfile
+
+# Mark docker-compose files at repository root as YAML
+docker-compose.yml linguist-language=YAML
+docker-compose.yaml linguist-language=YAML
+docker-compose.*.yml linguist-language=YAML
+docker-compose.*.yaml linguist-language=YAML
+*.compose.yml linguist-language=YAML
+*.compose.yaml linguist-language=YAML
+
+# If inside /docker
+/docker/**/docker-compose.yml linguist-language=YAML
+/docker/**/docker-compose.yaml linguist-language=YAML
+/docker/**/docker-compose.*.yml linguist-language=YAML
+/docker/**/docker-compose.*.yaml linguist-language=YAML
+/docker/**/*.compose.yml linguist-language=YAML
+/docker/**/*.compose.yaml linguist-language=YAML
+
+# Ensure files under /docker and root compose files are not treated as vendored
+/docker/** linguist-vendored=false
+docker-compose.yml linguist-vendored=false
+docker-compose.yaml linguist-vendored=false
+docker-compose.*.yml linguist-vendored=false
+docker-compose.*.yaml linguist-vendored=false
+*.compose.yml linguist-vendored=false
+*.compose.yaml linguist-vendored=false
