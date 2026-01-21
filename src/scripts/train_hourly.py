@@ -117,21 +117,16 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     return mae
     
 
-def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,optuna_path:str="db/optuna.db"):
+def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
+         optuna_path:str="sqlite:///db/optuna.db",callback:MLflowCallback=None):
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
     features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + [f"o3_plus_{i}h" for i in range(1,25)] + \
                     ["segment_id",]
 
-    # optuna callback for mlflow
-    opt_tracker = MLflowCallback(
-        tracking_uri=mlflow.get_tracking_uri(), 
-        metric_name="mae", #auto logs runs
-        
-    )
 
     ''' need to configure for airflow container path '''
-    storage = f"sqlite:///{optuna_path}"
+    storage = f"{optuna_path}"
 
     # Allow nested runs so the callback can start a run per trial while an outer run is active
    
@@ -143,7 +138,7 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,optu
 
     obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude)
 
-    study.optimize(obj, n_trials=trials, callbacks=[opt_tracker])
+    study.optimize(obj, n_trials=trials, callbacks=[callback])
 
     # save best params to json
     best_params = study.best_params
@@ -166,54 +161,47 @@ def train(horizons:int = 24,best_params:dict=None,
     models = {}
 
     
-    # if "imputation_confidence" in df_train.columns and df_train["imputation_confidence"].dtype == object:
-    #     df_train["imputation_confidence"] = df_train["imputation_confidence"].astype("category")
+    if "imputation_confidence" in df_train.columns and df_train["imputation_confidence"].dtype == object:
+        df_train["imputation_confidence"] = df_train["imputation_confidence"].astype("category")
 
-    # if "imputation_confidence" in df_val.columns and df_val["imputation_confidence"].dtype == object:
-    #     df_val["imputation_confidence"] = df_val["imputation_confidence"].astype("category")
+    if "imputation_confidence" in df_val.columns and df_val["imputation_confidence"].dtype == object:
+        df_val["imputation_confidence"] = df_val["imputation_confidence"].astype("category")
 
 
     for h in range(1, horizons+1):
-        with mlflow.start_run(run_name=f"train_h{h}"):#differnt run for each horizon
-            train_mask = df_train[f"pm25_plus_{h}h"].notnull() & (df_train[f"pm25_plus_{h}h"] >=0) \
-            & (df_train[f"pm25_plus_{h}h"] <=500)
 
-            eval_mask = df_val[f"pm25_plus_{h}h"].notnull() & (df_val[f"pm25_plus_{h}h"] >=0) \
-            & (df_val[f"pm25_plus_{h}h"] <=500)
-            #using only valid data points
-            y = df_train.loc[train_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
-            X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
+        train_mask = df_train[f"pm25_plus_{h}h"].notnull() & (df_train[f"pm25_plus_{h}h"] >=0) \
+        & (df_train[f"pm25_plus_{h}h"] <=500)
+
+        eval_mask = df_val[f"pm25_plus_{h}h"].notnull() & (df_val[f"pm25_plus_{h}h"] >=0) \
+        & (df_val[f"pm25_plus_{h}h"] <=500)
+        #using only valid data points
+        y = df_train.loc[train_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
 
 
-            y_val = df_val.loc[eval_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
-            X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
+        y_val = df_val.loc[eval_mask, f"pm25_plus_{h}h"].reset_index(drop=True).astype(float)
+        X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
 
-            # Skip horizons with insufficient data
-            if y.empty or y_val.empty:
-                print(f"Skipping horizon {h} due to insufficient data (train={len(y)}, val={len(y_val)})")
-                continue
+        # Skip horizons with insufficient data
+        if y.empty or y_val.empty:
+            print(f"Skipping horizon {h} due to insufficient data (train={len(y)}, val={len(y_val)})")
+            continue
 
-            reg = xgb.XGBRegressor(**best_params)
-            reg.fit(
-                X,
-                y,
-                eval_set=[(X_val, y_val)],
-                        verbose=False,
-            )
+        reg = xgb.XGBRegressor(**best_params)
+        reg.fit(
+            X,
+            y,
+            eval_set=[(X_val, y_val)],
+                    verbose=False,
+        )
 
-            models[f"pm25_plus_{h}h"] = reg
-            val_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_val, reg.predict(X_val))
+        models[f"pm25_plus_{h}h"] = reg
+        val_metrics[f"pm25_plus_{h}h"] = mean_absolute_error(y_val, reg.predict(X_val))
+        sign = infer_signature(X, reg.predict(X))
 
-            mlflow.log_metric(f"val_mae_pm25_plus_{h}h", val_metrics[f"pm25_plus_{h}h"])
-            mlflow.log_params(best_params)
-            mlflow.log_params({"type": "xgboost"})#log model type
-
-            sign = infer_signature(X, reg.predict(X))# for model consistency and format
-            mlflow.xgboost.log_model(xgb_model= reg, registered_model_name 
-                                     = f"pm25_plus_{h}h_model",signature=sign)
-            mlflow.end_run()
-
-    return models, val_metrics
+            
+    return models, val_metrics, sign
     
 def test(horizons:int = 24, models:dict=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \

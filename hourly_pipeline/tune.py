@@ -6,6 +6,7 @@ import os
 from scripts.train_hourly import tune, train
 import json
 import click
+from optuna.integration.mlflow import MLflowCallback
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://0.0.0.0:5000")
 VAL_PREDICTIONS_PATH = os.getenv("VAL_PREDICTIONS_PATH", "val_predictions.csv")
@@ -25,6 +26,13 @@ def mlflow_sanity_check():
 
 
 def main():
+
+     # optuna callback for mlflow
+    opt_tracker = MLflowCallback(
+        tracking_uri=mlflow.get_tracking_uri(), 
+        metric_name="mae", #auto logs runs
+        run_name="optuna_trial"
+    )
     
     mlflow_sanity_check()
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -34,7 +42,8 @@ def main():
     print("Data loaded for tuning\n")
 
     mlflow.set_experiment("xgb_aqi_hourly_tuning")
-    best_params = tune(df_train=train_df, df_val=val_df,trials=TRIALS)
+    best_params = tune(df_train=train_df, df_val=val_df,trials=TRIALS, 
+                       optuna_path=OPTUNA_PATH, callback=opt_tracker)
     print("Best hyperparameters found: ", best_params)
 
     with open(f"{ARTIFACTS_PATH}/best_params.json", "w") as f:

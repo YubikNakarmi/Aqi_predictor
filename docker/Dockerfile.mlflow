@@ -11,7 +11,3 @@ RUN pip install --upgrade pip && \
     azure-storage-blob \
     azure-identity\
     pymysql \
-    
-
-
-

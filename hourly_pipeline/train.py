@@ -4,6 +4,7 @@ from hourly_pipeline.tune import ARTIFACTS_PATH
 from scripts.train_hourly import train
 import pandas as pd
 import mlflow
+from mlflow.models import infer_signature
 
 DATA_PROCESSED_DIR = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_PATH", r"data/predictions/hourly/us_paro_hourly/test/")
@@ -26,11 +27,26 @@ def main():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_training")
 
-    model,metrics = train(df_val=val_df, df_test=test_df, horizon=HORIZON, best_params=best_params)
+    model,metrics,signature = train(df_val=val_df, df_test=test_df, horizon=HORIZON, best_params=best_params)
+
+    with mlflow.start_run(run_name="final_model_training"):
+        for h in range(1, HORIZON + 1):
+
+            model = f"pm25_plus_{h}h_model"
+            mlflow.log_metric(f"val_mae_pm25_plus_{h}h", metrics[f"pm25_plus_{h}h"])
+            mlflow.log_params(best_params)
+            mlflow.log_params({"type": "xgboost"})#log model type
+
+            sign = signature# for model consistency and format
+            mlflow.xgboost.log_model(xgb_model= model, registered_model_name 
+                                    = f"pm25_plus_{h}h_model",signature=sign,artifact_path="model")
+            mlflow.end_run()
+
 
     for h,metric in metrics:
-        print(f"Horizon {h} Test MAE: {metric['test_mae']}, RMSE: {metric['test_rmse']}")    
-
+        print(f"Horizon {h} Test MAE: {metric['test_mae']}, RMSE: {metric['test_rmse']}")
+        
+        
 
 
 
