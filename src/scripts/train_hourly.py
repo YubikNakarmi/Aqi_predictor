@@ -4,7 +4,7 @@ import pandas as pd
 import optuna
 import mlflow
 from optuna.integration import MLflowCallback
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error
 from modules.data_hourly_preprocessing import DataCleaner as clean
 import os
 import numpy as np
@@ -168,7 +168,8 @@ def train(horizons:int = 24,best_params:dict=None,
         best_params = tune(df_train=df_train, df_val=df_val, target_col=target_col, 
                           value_range=value_range, horizons=horizons)
 
-    val_metrics = {}
+    val_metrics_mae = {}
+    val_metrics_rmse = {}
     models = {}
 
     
@@ -210,11 +211,12 @@ def train(horizons:int = 24,best_params:dict=None,
         )
 
         models[target_key] = reg
-        val_metrics[target_key] = mean_absolute_error(y_val, reg.predict(X_val))
+        val_metrics_mae[target_key] = mean_absolute_error(y_val, reg.predict(X_val))
+        val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(X_val), squared=False)
         sign = infer_signature(X, reg.predict(X))
 
             
-    return models, val_metrics, sign
+    return models, val_metrics_mae, val_metrics_rmse, sign
     
 def test(horizons:int = 24, models:dict=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \

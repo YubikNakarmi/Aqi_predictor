@@ -9,4 +9,4 @@ __pycache__/
 /pypipeline.egg-info
 /secrets
 cmds.sh
-hourly_pipeline/USAGE_EXAMPLES.md
+/hourly_pipeline/USAGE_EXAMPLES.md

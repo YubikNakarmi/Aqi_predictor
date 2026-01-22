@@ -11,9 +11,9 @@ from optuna.integration.mlflow import MLflowCallback
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://0.0.0.0:5000")
 VAL_PREDICTIONS_PATH = os.getenv("VAL_PREDICTIONS_PATH", "val_predictions.csv")
 DATA_PROCESSED_PATH = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
-OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"db/optuna.db")
-TRIALS = int(os.getenv("TRIALS", 60))
-ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "/data/artifacts/")
+OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"sqlite:///db/optuna.db")
+TRIALS = int(os.getenv("TRIALS", 5))
+ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 
 
 
@@ -31,7 +31,6 @@ def main():
     opt_tracker = MLflowCallback(
         tracking_uri=mlflow.get_tracking_uri(), 
         metric_name="mae", #auto logs runs
-        run_name="optuna_trial"
     )
     
     mlflow_sanity_check()
@@ -47,6 +46,8 @@ def main():
     print("Best hyperparameters found: ", best_params)
 
     with open(f"{ARTIFACTS_PATH}/best_params.json", "w") as f:
+        if not os.path.exists(ARTIFACTS_PATH):
+            os.makedirs(ARTIFACTS_PATH)
         json.dump(best_params, f)
     print("tuning complete")
 
