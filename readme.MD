@@ -127,7 +127,7 @@ docker compose up
 ## MLflow 
 
 ### Setup
-MLflow is set up with a SQLite backend and Azure Blob Storage for artifacts. The configuration (in `docker-compose.yaml`) mounts the `db/` folder as the backend store (after running `dvc pull`), and uses the `DEFAULT_ARTIFACT_ROOT` environment variable for artifact storage.
+MLflow is set up with a MySQL (local in test) and Azure Blob Storage for artifacts. The configuration (in `docker-compose.yaml`) mounts the `db/` folder as the backend store (after running `dvc pull`), and uses the `DEFAULT_ARTIFACT_ROOT` environment variable for artifact storage.
 
 ``` python
 artifacts_uri = os.environ.get("DEFAULT_ARTIFACT_ROOT")  # must be set so MLflow can register artifacts/models

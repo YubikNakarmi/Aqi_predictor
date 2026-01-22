@@ -1,5 +1,8 @@
 {
   "python.analysis.extraPaths": ["./src"],
   "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
-  "python.analysis.autoSearchPaths": true
+  "python.analysis.autoSearchPaths": true,
+  "githubPullRequests.ignoredPullRequestBranches": [
+    "test"
+  ]
 }
