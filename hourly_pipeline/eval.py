@@ -14,8 +14,7 @@ VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro_hourly")
 
 
-def plot(eval_df,builtin_metrics, artifacts_dir):
-    print(eval_df["prediction"].head())
+
    
 
 def main():
@@ -25,21 +24,25 @@ def main():
     mlflow.set_experiment("xgb_aqi_hourly_evaluation") 
     df_test= pd.read_parquet(f"{DATA_PROCESSED_DIR}/test_processed.parquet")
 
-    client = MlflowClient()
     result={}
     features_exclude = [f"{TARGET_COL}_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        [f"o3_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        ["segment_id", "imputation_confidence"]
-    
+    client = MlflowClient()
     horizon_predictions = []  # collect predictions per horizon to concatenate later
 
-    for h in range(1,2):
+    for h in range(1,HORIZON+1):
         with mlflow.start_run(run_name=f"final_{TARGET_COL}_evaluation_{h}h"):
 
             model_uri=f"models:/pm25_plus_{h}h_model/latest" #getting model uri form registry
             model = mlflow.xgboost.load_model(model_uri) #lodaing from uri
             target_key = f"{TARGET_COL}_plus_{h}h"
+
+            # Get the latest model version for tagging/promotion
+            model_name = f"{target_key}_model"
+            latest_versions = client.get_latest_versions(model_name, stages=["None"])
+            current_model_version = latest_versions[0].version if latest_versions else None
 
             ''' preprocessing steps'''
             test_mask = (
@@ -60,6 +63,7 @@ def main():
 
             y = df_test.loc[test_mask, target_key]
             y_pred = model.predict(X) #predict
+            print(f"Predictions for horizon {h}h completed.")
             
             
             eval_df= pd.DataFrame({
@@ -89,12 +93,13 @@ def main():
 
             mlflow.log_artifact(prediction_path,artifact_path="prediction")
             os.remove(prediction_path) #removing after logging
+
             
             ''' mlflow evaluation'''
 
             thresold ={
-               "mae": MetricThreshold(threshold= 25.0,greater_is_better=False),
-               "rmse": MetricThreshold(threshold= 40.0,greater_is_better=False)
+               "mean_absolute_error": MetricThreshold(threshold= 25.0,greater_is_better=False),
+               "root_mean_squared_error": MetricThreshold(threshold= 40.0,greater_is_better=False)
            } #setting thresholds
             
             result = mlflow.models.evaluate( #evaluation
@@ -103,25 +108,31 @@ def main():
                                         model_type="regressor",
                                         data=eval_df,
                                         evaluators="default",
-                                        evaluator_config={"log_explainer": True})
+                                        )
             # checking for thersholds and promotion
+
             try:
                 mlflow.validate_evaluation_results(candidate_result=result,
                                                validation_thresholds=thresold)
                 print(f"Model evaluation for horizon {h}h met the specified thresholds.")
-                client.set_model_version_tag(name=target_key+"_model",
-                                         version=result.model_version,
-                                         key="rmse",
-                                         value=str(result.metrics['rmse']))
-                client.set_model_version_tag(name=target_key+"_model",
-                                            version=result.model_version,
-                                            key="mae",
-                                            value=str(result.metrics['mae']))
-                client.transition_model_version_stage(
-                    name=target_key+"_model",
-                    version=result.model_version,
-                    stage="staging"
-            )
+
+                if current_model_version:
+                    client.set_model_version_tag(name=model_name,
+                                             version=current_model_version,
+                                             key="rmse",
+                                             value=str(result.metrics['root_mean_squared_error']))
+                    client.set_model_version_tag(name=model_name,
+                                                version=current_model_version,
+                                                key="mae",
+                                                value=str(result.metrics['mean_absolute_error']))
+                    client.transition_model_version_stage(
+                        name=model_name,
+                        version=current_model_version,
+                        stage="staging"
+                    )
+                    print(f"Model for horizon {h}h promoted to 'staging' stage.")
+                else:
+                    print(f"Warning: Could not find model version for {model_name}")
 
             except mlflow.exceptions.MlflowException as e:
                 print(f"Model evaluation did not meet the specified thresholds: {e}")
