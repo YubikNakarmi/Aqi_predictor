@@ -17,8 +17,20 @@ VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 
 
-
+def mlflow_sanity_check()->bool:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    try:
+        mlflow.set_experiment("sanity_check")
+        with mlflow.start_run(run_name="sanity_check_run"):
+            mlflow.log_param("sanity_check", "passed")
+        print(f"MLflow tracking URI set to {MLFLOW_TRACKING_URI}")
+        return True
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
+        
 def main():
+    if mlflow_sanity_check() is False:
+        return
     train_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/train_processed.parquet")
     val_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/val_processed.parquet")
     print("Test data loaded\n")
@@ -39,7 +51,7 @@ def main():
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        ["segment_id", "imputation_confidence"]
 
-
+    #mlflow logging
     for h in range(1, HORIZON + 1):
 
         with mlflow.start_run(run_name=f"final_{TARGET_COL}_training_{h}h"):
@@ -72,6 +84,7 @@ def main():
                 params=best_params,
                 input_example=train_df.drop(columns=features_exclude).iloc[:5]
             )
+            print(f"Registered {key} model successrully")
         mlflow.end_run()
 
     print("Training complete and models logged to MLflow.")

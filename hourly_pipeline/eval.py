@@ -18,9 +18,6 @@ def plot(eval_df,builtin_metrics, artifacts_dir):
     print(eval_df["prediction"].head())
    
 
-
-
-
 def main():
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -62,43 +59,45 @@ def main():
             y = df_test.loc[test_mask, target_key]
             df_test_eval = df_test_h.join(y)
 
+            thresold ={
+               "mae": MetricThreshold(threshold= 25.0,greater_is_better=False),
+               "rmse": MetricThreshold(threshold= 40.0,greater_is_better=False)
+           }
+            
             result = mlflow.models.evaluate(
                                             predictions="prediction",
                                             targets = "target",
-                                           model_type="regressor",
-                                           data=eval_df,
-                                           evaluators="default",
-                                           evaluator_config={"log_explainer": True,
-                                                             })
-            #need to add shap etc
-                                           
-
-            # thresholds = [
-            #     MetricThreshold(
-            #         metric="regression_metrics.rmse",
-            #         threshold_type="less_than",
-            #         value=50.0,
-            #     ),
-            #     MetricThreshold(
-            #         metric="regression_metrics.mae",
-            #         threshold_type="less_than",
-            #         value=30.0,
-            #     ),
-            # ]
+                                        model_type="regressor",
+                                        data=eval_df,
+                                        evaluators="default",
+                                        evaluator_config={"log_explainer": True,
+                                                            })
             
-            # client.set_model_version_tag(name=target_key+"_model",
-            #                              version=result.model_version,
-            #                              key="rmse",
-            #                              value=str(result.metrics['regression_metrics']['rmse']))
-            # client.set_model_version_tag(name=target_key+"_model",
-            #                              version=result.model_version,
-            #                              key="mae",
-            #                              value=str(result.metrics['regression_metrics']['mae']))
-            # client.transition_model_version_stage(
-            #     name=target_key+"_model",
-            #     version=result.model_version,
-            #     stage="staging"
-            # )
+            try:
+                mlflow.validate_evaluation_results(candidate_result=result,
+                                               validation_thresholds=thresold)
+                print(f"Model evaluation for horizon {h}h met the specified thresholds.")
+                client.set_model_version_tag(name=target_key+"_model",
+                                         version=result.model_version,
+                                         key="rmse",
+                                         value=str(result.metrics['regression_metrics']['rmse']))
+                client.set_model_version_tag(name=target_key+"_model",
+                                            version=result.model_version,
+                                            key="mae",
+                                            value=str(result.metrics['regression_metrics']['mae']))
+                client.transition_model_version_stage(
+                    name=target_key+"_model",
+                    version=result.model_version,
+                    stage="staging"
+            )
+
+            except mlflow.exceptions.MlflowException as e:
+                print(f"Model evaluation did not meet the specified thresholds: {e}")
+                continue
+                
+
+            
+            
         mlflow.end_run()
 
 if __name__ == "__main__":

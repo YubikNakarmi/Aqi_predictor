@@ -212,9 +212,9 @@ def train(horizons:int = 24,best_params:dict=None,
 
         models[target_key] = reg
         val_metrics_mae[target_key] = mean_absolute_error(y_val, reg.predict(X_val))
-        val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(X_val), squared=False)
+        val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(X_val))
         sign = infer_signature(X, reg.predict(X))
-
+        print(f"Trained model for horizon {h}h with MAE: {val_metrics_mae[target_key]:.4f}, RMSE: {val_metrics_rmse[target_key]:.4f}")
             
     return models, val_metrics_mae, val_metrics_rmse, sign
     

@@ -14,11 +14,13 @@ services:
       - mlflow
       - server
       - --backend-store-uri
-      -  mysql+pymysql://${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
+      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
       - --default-artifact-root
       - wasbs://mlflow@yubikaqidata.blob.core.windows.net/ #azure blob storage
       - --host
       - 0.0.0.0
+      - --allowed-hosts
+      - "*"
       - --port
       - "5000"
     networks:
@@ -44,13 +46,8 @@ services:
       - ./models:/models
       - optuna-db:/optuna/db
     environment:
-      - MLFLOW_TRACKING_URI=http://0.0.0.0:5000
-      - DATA_RAW_CSV=/data/raw/static/hourly/aqi/us_diplomatic_post_hourly.csv
-      - DATA_PROCESSED_DIR=/data/processed/hourly/us_diplomatic_post_hourly/
-      - ARTIFACTS_DIR=/db/artifacts
-      - HORIZONS=24
-      - TUNING_TRIALS=30
       - OPTUNA_STORAGE=sqlite:///optuna/db/optuna.db
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
     depends_on:
       mlflow:
         condition: service_healthy
@@ -58,8 +55,8 @@ services:
       - aqi_network
     profiles:
       - manual
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 3g
+    memswap_limit: 3g
 
 networks:
   aqi_network:
