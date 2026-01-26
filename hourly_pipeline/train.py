@@ -39,7 +39,6 @@ def main():
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        ["segment_id", "imputation_confidence"]
 
-   
 
     for h in range(1, HORIZON + 1):
 
@@ -57,6 +56,7 @@ def main():
 
             val_mae = mae_metrics.get(key)
             val_rmse = rmse_metrics.get(key)
+
             if val_rmse is not None:
                 mlflow.log_metric(f"val_rmse_{key}", val_rmse) #log metrics of each model
                 print(f"Horizon {key}: Val RMSE = {val_rmse}")

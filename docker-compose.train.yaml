@@ -14,7 +14,7 @@ services:
       - mlflow
       - server
       - --backend-store-uri
-      -  mysql+pymysql://${MYSQL_USER}:${MYSQL_PW}@host.docker.internal:3306/mlflow_backend #local mysql, host.docker.internal to specifiy machine host
+      -  mysql+pymysql://${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
       - --default-artifact-root
       - wasbs://mlflow@yubikaqidata.blob.core.windows.net/ #azure blob storage
       - --host
@@ -25,7 +25,7 @@ services:
       - aqi_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/ && timeout 3 bash -c '</dev/tcp/${MYSQL_HOST:-mysql}/${MYSQL_PORT:-3306}'"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

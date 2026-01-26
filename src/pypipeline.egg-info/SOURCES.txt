@@ -10,5 +10,5 @@ src/pypipeline.egg-info/requires.txt
 src/pypipeline.egg-info/top_level.txt
 src/scripts/__init__.py
 src/scripts/ingestion_hourly.py
-src/scripts/test.py
+src/scripts/plots.py
 src/scripts/train_hourly.py
