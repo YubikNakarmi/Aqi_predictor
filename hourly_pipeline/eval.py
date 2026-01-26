@@ -15,7 +15,6 @@ PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro
 
 
 
-   
 
 def main():
 
@@ -29,6 +28,7 @@ def main():
                        [f"o3_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        ["segment_id", "imputation_confidence"]
+    
     client = MlflowClient()
     horizon_predictions = []  # collect predictions per horizon to concatenate later
 

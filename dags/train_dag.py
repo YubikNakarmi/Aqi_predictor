@@ -6,13 +6,11 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.operators.bash import BashOperator
 from docker.types import Mount
-import os
-import subprocess
-from modules.data_hourly_preprocessing import clean_data_hourly
+
 
 
 with DAG(dag_id="aqi_data_dag",
-         start_date=datetime(2025, 8, 1),
+         start_date=datetime(2026, 1, 1),
          schedule='@monthly',
          catchup=False,
          ) as dag:
@@ -32,7 +30,7 @@ with DAG(dag_id="aqi_data_dag",
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
-        command = "python hourly_pipeline/preprocess.py",
+        command = "python pipelines/preprocess.py",
         mount_temp_dir=False,
     ),
     tune = DockerOperator(
@@ -40,7 +38,7 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove=True,
-        command='python -m hourly_pipeline.tune',
+        command='python pipelines/tune.py',
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
@@ -51,7 +49,7 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove=True,
-        command='python -m hourly_pipeline.train',
+        command='python pipelines/train.py',
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
@@ -62,7 +60,7 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove=True,
-        command='python -m hourly_pipeline.eval',
+        command='python pipelines/eval.py',
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,

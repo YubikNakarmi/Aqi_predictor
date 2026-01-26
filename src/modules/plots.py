@@ -5,6 +5,7 @@ import os
 import seaborn as sns
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+import shap
 
 class eval:
     def __init__(self, models:dict,  horizon:int, target_col:str="pm25",
