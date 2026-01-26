@@ -1,6 +1,5 @@
 import pandas as pd
 from train import HORIZON, TARGET_COL
-from scripts.train_hourly import train
 import mlflow
 import os 
 from mlflow import MlflowClient
@@ -32,7 +31,7 @@ def main():
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        ["segment_id", "imputation_confidence"]
     
-    predictions={}
+    preds_df = pd.DataFrame()
 
     for h in range(1, 2):
         with mlflow.start_run(run_name=f"final_{TARGET_COL}_evaluation_{h}h"):
@@ -44,10 +43,12 @@ def main():
             test_mask = df_test[target_key].notnull() & (df_test[target_key] >= VALUE_MIN) \
             & (df_test[target_key] <= VALUE_MAX)
 
-            df_test_h = df_test[test_mask].drop(features_exclude, axis=1).copy()
+            date_index = df_test["date"]
+
+            X = df_test[test_mask].drop(features_exclude, axis=1).copy()
 
 
-            y_pred = model.predict(df_test_h)
+            y_pred = model.predict(X)
             
             eval_df= pd.DataFrame({
                 "prediction": y_pred,
@@ -55,9 +56,11 @@ def main():
             })
 
             mlflow.set_tag("horizon", f"{h}h")
-        
-            y = df_test.loc[test_mask, target_key]
-            df_test_eval = df_test_h.join(y)
+            preds_df[f"{target_key}_pred"] = y_pred
+            preds_df["date"] = date_index[test_mask]
+
+            
+
 
             thresold ={
                "mae": MetricThreshold(threshold= 25.0,greater_is_better=False),
@@ -80,11 +83,11 @@ def main():
                 client.set_model_version_tag(name=target_key+"_model",
                                          version=result.model_version,
                                          key="rmse",
-                                         value=str(result.metrics['regression_metrics']['rmse']))
+                                         value=str(result.metrics['rmse']))
                 client.set_model_version_tag(name=target_key+"_model",
                                             version=result.model_version,
                                             key="mae",
-                                            value=str(result.metrics['regression_metrics']['mae']))
+                                            value=str(result.metrics['mae']))
                 client.transition_model_version_stage(
                     name=target_key+"_model",
                     version=result.model_version,
@@ -94,9 +97,8 @@ def main():
             except mlflow.exceptions.MlflowException as e:
                 print(f"Model evaluation did not meet the specified thresholds: {e}")
                 continue
-                
 
-            
+                   
             
         mlflow.end_run()
 

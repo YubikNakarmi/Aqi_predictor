@@ -106,19 +106,22 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     y_val = df_val.loc[eval_mask, target_key].reset_index(drop=True).astype(float)
     X_val = df_val.loc[eval_mask].drop(columns=features_exclude).reset_index(drop=True)
 
-   #fitting model using regression and eveluation
-    model = xgb.XGBRegressor(**params)
-    model.fit(
-        X,
-        y,
-        eval_set=[(X_val, y_val)],
-        verbose=False,
+    dtrain = xgb.DMatrix(data=X, label=y, enable_categorical=True)
+    dval = xgb.DMatrix(data=X_val, label=y_val, enable_categorical=True)
+
+    num_boost_round = params.pop("n_estimators")
+    booster = xgb.train(
+        params,
+        dtrain,
+        num_boost_round=num_boost_round,
+        evals=[(dval, "validation")],
+        verbose_eval=False,
     )
 
-    preds = model.predict(X_val)
+    preds = booster.predict(dval)
     mae = mean_absolute_error(y_val, preds)
 
-    trial.set_user_attr("best_iteration", getattr(model, "best_iteration", None))
+    trial.set_user_attr("best_iteration", getattr(booster, "best_iteration", None))
     return mae
     
 
@@ -202,18 +205,24 @@ def train(horizons:int = 24,best_params:dict=None,
             print(f"Skipping horizon {h} for {target_col} due to insufficient data (train={len(y)}, val={len(y_val)})")
             continue
 
-        reg = xgb.XGBRegressor(**best_params)
-        reg.fit(
-            X,
-            y,
-            eval_set=[(X_val, y_val)],
-                    verbose=False,
+        dtrain = xgb.DMatrix(data=X, label=y, enable_categorical=True)
+        dval = xgb.DMatrix(data=X_val, label=y_val, enable_categorical=True)
+
+        training_params = best_params.copy()
+        num_boost_round = training_params.pop("n_estimators", 500)
+
+        reg = xgb.train(
+            training_params,
+            dtrain,
+            num_boost_round=num_boost_round,
+            evals=[(dval, "validation")],
+            verbose_eval=False,
         )
 
         models[target_key] = reg
-        val_metrics_mae[target_key] = mean_absolute_error(y_val, reg.predict(X_val))
-        val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(X_val))
-        sign = infer_signature(X, reg.predict(X))
+        val_metrics_mae[target_key] = mean_absolute_error(y_val, reg.predict(dval))
+        val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(dval))
+        sign = infer_signature(X, reg.predict(dtrain))
         print(f"Trained model for horizon {h}h with MAE: {val_metrics_mae[target_key]:.4f}, RMSE: {val_metrics_rmse[target_key]:.4f}")
             
     return models, val_metrics_mae, val_metrics_rmse, sign
@@ -239,8 +248,9 @@ def test(horizons:int = 24, models:dict=None,features_exclude
         
         if y_test.empty:
             continue
-            
-        test_metrics[target_key] = mean_absolute_error(y_test, model.predict(X_test))
+
+        dtest = xgb.DMatrix(data=X_test, label=y_test, enable_categorical=True)
+        test_metrics[target_key] = mean_absolute_error(y_test, model.predict(dtest))
 
     return test_metrics
 

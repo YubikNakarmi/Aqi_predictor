@@ -1,11 +1,8 @@
 import os
 import json
-
-from sklearn import metrics
 from scripts.train_hourly import train
 import pandas as pd
 import mlflow
-from mlflow.models import infer_signature
 
 DATA_PROCESSED_DIR = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_PATH", r"data/predictions/hourly/us_paro_hourly/test/")
@@ -40,7 +37,9 @@ def main():
     print("Best hyperparameters loaded\n") #getting best params
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI) #set mlflow tracking uri to server
-    mlflow.set_experiment(f"xgb_{TARGET_COL}_hourly_training")
+    # mlflow.set_experiment(f"xgb_{TARGET_COL}_hourly_training")    
+    mlflow.set_experiment(f"test")
+
 
     models, mae_metrics,rmse_metrics ,signature = train(df_val=val_df, df_train=train_df, horizons=HORIZON, 
                                        best_params=best_params, target_col=TARGET_COL,

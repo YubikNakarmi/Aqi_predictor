@@ -1,11 +1,9 @@
 import pandas as pd
 import xgboost as xgb
 import mlflow
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 import os
-from scripts.train_hourly import tune, train
+from scripts.train_hourly import tune
 import json
-import click
 from optuna.integration.mlflow import MLflowCallback
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://0.0.0.0:5000")
