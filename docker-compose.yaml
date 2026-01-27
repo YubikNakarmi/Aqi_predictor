@@ -49,7 +49,7 @@ x-airflow-common:
   image: ${AIRFLOW_IMAGE_NAME:-my-airflow:latest}
   build:
     context: .
-    dockerfile: dockerfile.airflow
+    dockerfile: docker/dockerfile.airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -82,7 +82,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/db:/db
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
+  depends_on: 
     &airflow-common-depends-on
     redis:
       condition: service_healthy
@@ -121,23 +121,62 @@ services:
 
   # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
   mlflow:
-    image: python:3.11-slim
-    command: >
-      sh -c "pip install --no-cache-dir mlflow && mkdir -p /db/artifacts && \
-             mlflow server --backend-store-uri sqlite:///db/mlflow.db \
-                           --default-artifact-root \"$DEFAULT_ARTIFACT_ROOT\" --host 0.0.0.0 --port 5000"
-    volumes:
-      - ${AIRFLOW_PROJ_DIR:-.}/db:/db
-    ports:
-      - "5000:5000"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: aqi-mlflow:latest
+    container_name: mlflow-server
     env_file:
       - .env
+    ports:
+      - "5000:5000"      
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
+      - --default-artifact-root
+      - wasbs://mlflow@yubikaqidata.blob.core.windows.net/ #azure blob storage
+      - --host
+      - 0.0.0.0
+      - --allowed-hosts
+      - "*"
+      - --port
+      - "5000"
+    networks:
+      - aqi_network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://0.0.0.0:5000"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/ || exit 1"]
       interval: 10s
-      timeout: 10s
-      retries: 5
-    restart: always
+      timeout: 5s
+      retries: 3
+    mem_limit: 1g
+    memswap_limit: 1g
+
+  trainer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.trainer
+    image: aqi-trainer:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ./models:/models
+      - optuna-db:/optuna/db
+    environment:
+      - OPTUNA_STORAGE=sqlite:///optuna/db/optuna.db
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
+    mem_limit: 3g
+    memswap_limit: 3g 
 
   airflow-apiserver:
     <<: *airflow-common
@@ -360,5 +399,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+networks:
+  aqi_network:
+    driver: bridge
 volumes:
+  optuna-db:
+    driver: local
   postgres-db-volume:
+    driver: local

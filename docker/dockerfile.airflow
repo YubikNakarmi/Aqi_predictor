@@ -1,9 +1,13 @@
 # Dockerfile.airflow
-FROM apache/airflow:2.6.4-python3.11
+# Use an official Airflow image (Python 3.11 variant). The previous tag 2.6.4-python3.11 does not exist.
+FROM apache/airflow:2.8.4-python3.11
 
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Airflow base images recommend using their constraints when adding packages
+ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-2.8.4/constraints-3.11.txt"
 
 USER airflow
 WORKDIR /opt/pypipeline
@@ -12,12 +16,21 @@ WORKDIR /opt/pypipeline
 COPY pyproject.toml setup.cfg /opt/pypipeline/
 COPY src /opt/pypipeline/src
 COPY dags /opt/pypipeline/dags
-COPY requirements.txt /opt/pypipeline/  
 
-# Install package 
-RUN pip install --no-cache-dir -e /opt/pypipeline[ml] \
-    && pip install --no-cache-dir  optuna-integration[mlflow]\
-    && pip install --no-cache-dir requirements.txt
+
+# Install package and dependencies
+COPY src/ ./src/
+COPY pyproject.toml setup.cfg ./
+
+# Clean stale egg-info and ensure ownership before installing
+USER root
+RUN rm -rf /opt/pypipeline/src/pypipeline.egg-info && \
+    chown -R airflow:root /opt/pypipeline
+
+# Install Python deps as airflow user (recommended by Airflow docs)
+USER airflow
+RUN pip install --no-cache-dir --constraint "${AIRFLOW_CONSTRAINTS_URL}" -e .[ml]
+
 
 # Defaults 
 ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags
