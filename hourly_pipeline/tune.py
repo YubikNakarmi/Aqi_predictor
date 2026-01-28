@@ -6,23 +6,27 @@ from scripts.train_hourly import tune
 import json
 from optuna.integration.mlflow import MLflowCallback
 
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://0.0.0.0:5000")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 VAL_PREDICTIONS_PATH = os.getenv("VAL_PREDICTIONS_PATH", "val_predictions.csv")
 DATA_PROCESSED_PATH = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
 OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"sqlite:///db/optuna.db")
-TRIALS = int(os.getenv("TRIALS", 5))
+TRIALS = int(os.getenv("TRIALS", 60))
 ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 
 
 
 
 def mlflow_sanity_check():
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    with mlflow.start_run(run_name="sanity_check"):
-        mlflow.log_param("sanity_check_param", 42)
-        mlflow.log_metric("sanity_check_metric", 3.14)
 
-
+    try:
+        mlflow.set_experiment("sanity_check")
+        with mlflow.start_run(run_name="sanity_check_run"):
+            mlflow.log_param("sanity_check", "passed")
+        print(f"MLflow tracking URI set to {MLFLOW_TRACKING_URI}")
+        return True
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
+    
 def main():
 
      # optuna callback for mlflow

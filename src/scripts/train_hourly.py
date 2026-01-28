@@ -4,13 +4,12 @@ import pandas as pd
 import optuna
 import mlflow
 from optuna.integration import MLflowCallback
-from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from modules.data_hourly_preprocessing import DataCleaner as clean
 import os
-import numpy as np
 from functools import partial
 from mlflow.models.signature import infer_signature
-from mlflow.tracking import MlflowClient
+
 
 
 def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame = None, 
@@ -30,7 +29,7 @@ def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame
             train_df_cleaned[f"{target}_plus_{targets}h"] = (train_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
             val_df_cleaned[f"{target}_plus_{targets}h"] = (val_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
             test_df_cleaned[f"{target}_plus_{targets}h"] = (test_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
-    
+            print("Created target column:", f"{target}_plus_{targets}h")
     return train_df_cleaned, val_df_cleaned, test_df_cleaned
 
 
@@ -138,6 +137,7 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
 
     ''' need to configure for airflow container path '''
     storage = f"{optuna_path}"
+    print(f"Optuna storage set to {storage}")
 
     # Allow nested runs so the callback can start a run per trial while an outer run is active
    
@@ -149,11 +149,16 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
 
     obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude,
                  target_col=target_col, value_range=value_range)
-
+    
+    print("Starting hyperparameter tuning...")
     study.optimize(obj, n_trials=trials, callbacks=[callback])
 
     # save best params to json
     best_params = study.best_params
+    print("tuning complete")
+    print("Best params from tuning: ", best_params)
+    print("Best MAE from tuning: ", study.best_value)
+    
 
     return best_params
 
