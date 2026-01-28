@@ -12,11 +12,9 @@ ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/co
 USER airflow
 WORKDIR /opt/pypipeline
 
-# Copy minimal 
+# Copy minimal (DAGs are mounted as volume, not copied)
 COPY pyproject.toml setup.cfg /opt/pypipeline/
 COPY src /opt/pypipeline/src
-COPY dags /opt/pypipeline/dags
-
 
 # Install package and dependencies
 COPY src/ ./src/
@@ -33,8 +31,7 @@ USER airflow
 RUN pip install --no-cache-dir --constraint "${AIRFLOW_CONSTRAINTS_URL}" -e .[ml]
 
 
-# Defaults 
-ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/pypipeline/dags
+
 ENV PYTHONUNBUFFERED=1
 
 

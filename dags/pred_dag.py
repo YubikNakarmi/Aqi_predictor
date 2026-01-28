@@ -27,7 +27,6 @@ with DAG(dag_id="aqi_data_dag",
                 api_version='auto',
                 command = 'python train.py',    
                 docker_url='unix://var/run/docker.sock',#connection to host docker daemon 
-                mount_tmp_dir=False,   
                 container_name='ingest',
                 auto_remove="force",#auto removes container to avoid conflicts
                 mounts=[Mount(source=host_path, target='/opt/airflow/data', type='bind')],#mounting external volume
