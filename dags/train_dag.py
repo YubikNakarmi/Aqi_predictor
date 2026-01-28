@@ -31,7 +31,8 @@ with DAG(dag_id="aqi_data_dag",
         network_mode='aqi_network',
         mounts=mounts,
         command = "python pipelines/preprocess.py",
-        mount_temp_dir=False,
+        mount_tmp_dir=False, 
+        
     ),
     tune = DockerOperator(
         task_id='tune_hyperparameters',
@@ -43,6 +44,7 @@ with DAG(dag_id="aqi_data_dag",
         network_mode='aqi_network',
         mounts=mounts,
         mount_temp_dir=False,
+        
     ),
     train = DockerOperator(
         task_id='train_model',
@@ -53,7 +55,7 @@ with DAG(dag_id="aqi_data_dag",
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
-        mount_temp_dir=False,
+        mount_tmp_dir=False, 
     ),
     evaluate = DockerOperator(
         task_id='evaluate_model',
@@ -64,12 +66,7 @@ with DAG(dag_id="aqi_data_dag",
         docker_url='unix://var/run/docker.sock',
         network_mode='aqi_network',
         mounts=mounts,
-        mount_temp_dir=False,
-    ),
-    dvc_push = BashOperator(
-        task_id='dvc_push',
-        bash_command='dvc add &&''dvc push',
-    )
-            
+        mount_tmp_dir=False, 
+    ) 
     
 

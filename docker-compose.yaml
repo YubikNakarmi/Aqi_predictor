@@ -24,7 +24,7 @@
 # The following variables are supported:
 #
 # AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:3.0.3
+#                                Default: apache/airflow:3.1.6
 # AIRFLOW_UID                  - User ID in Airflow containers
 #                                Default: 50000
 # AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
@@ -46,10 +46,15 @@
 ---
 x-airflow-common:
   &airflow-common
+  # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
+  # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
+  # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   image: ${AIRFLOW_IMAGE_NAME:-my-airflow:latest}
   build:
     context: .
     dockerfile: docker/dockerfile.airflow
+  env_file:
+    - ${ENV_FILE_PATH:-.env}
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -61,28 +66,33 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    # yamllint disable rule:line-length
+    # Use simple http server on scheduler for health checks
+    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
+    # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    # Install MLflow and extras on container start (dev convenience)
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-mlflow boto3 s3fs}
+    # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
+    # for other purpose (development, test and especially production usage) build/extend Airflow image.
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-mlflow boto3 s3fs apache-airflow-providers-fab}
+    # The following line can be used to set a custom config file, stored in the local config folder
+    AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     # Point Airflow tasks to the MLflow server (mlflow service below)
     MLFLOW_TRACKING_URI: http://mlflow:5000
     # Make src importable inside containers
     PYTHONPATH: /opt/airflow/src:/opt/airflow/scripts:$PYTHONPATH
-  env_file:
-    - .env
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data  
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
     - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src:ro
     # make the host ./db available at /db as well (for MLflow server backend/artifacts)
     - ${AIRFLOW_PROJ_DIR:-.}/db:/db
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
-  depends_on: 
+  depends_on:
     &airflow-common-depends-on
     redis:
       condition: service_healthy
@@ -129,7 +139,7 @@ services:
     env_file:
       - .env
     ports:
-      - "5000:5000"      
+      - "5000:5000"
     command:
       - mlflow
       - server
@@ -176,7 +186,7 @@ services:
     profiles:
       - manual
     mem_limit: 3g
-    memswap_limit: 3g 
+    memswap_limit: 3g
 
   airflow-apiserver:
     <<: *airflow-common
@@ -246,7 +256,6 @@ services:
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
       DEFAULT_ARTIFACT_ROOT: ${DEFAULT_ARTIFACT_ROOT:-file:///db/artifacts}
-
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -406,4 +415,3 @@ volumes:
   optuna-db:
     driver: local
   postgres-db-volume:
-    driver: local

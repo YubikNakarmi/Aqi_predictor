@@ -1,13 +1,13 @@
 # Dockerfile.airflow
-# Use an official Airflow image (Python 3.11 variant). The previous tag 2.6.4-python3.11 does not exist.
-FROM apache/airflow:2.8.4-python3.11
+# Use an official Airflow image (Python 3.11 variant)
+FROM apache/airflow:3.1.6-python3.11
 
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Airflow base images recommend using their constraints when adding packages
-ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-2.8.4/constraints-3.11.txt"
+ARG AIRFLOW_CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-3.1.6/constraints-3.11.txt"
 
 USER airflow
 WORKDIR /opt/pypipeline
@@ -29,6 +29,7 @@ RUN rm -rf /opt/pypipeline/src/pypipeline.egg-info && \
 
 # Install Python deps as airflow user (recommended by Airflow docs)
 USER airflow
+# Note: Airflow 3.x includes FAB provider by default, no need to install separately
 RUN pip install --no-cache-dir --constraint "${AIRFLOW_CONSTRAINTS_URL}" -e .[ml]
 
 
