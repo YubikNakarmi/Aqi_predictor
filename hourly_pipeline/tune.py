@@ -14,8 +14,6 @@ TRIALS = int(os.getenv("TRIALS", 60))
 ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 
 
-
-
 def mlflow_sanity_check():
 
     try:
