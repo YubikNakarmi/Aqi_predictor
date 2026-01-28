@@ -71,9 +71,9 @@ def main():
     test_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'test_processed.parquet'))
     print(f"Processed data saved to {DATA_PROCESSED_PATH}")
 
-    metadata = metadata(dvc_file_path="data.dvc")
+    metadata1 = metadata(dvc_file_path="data.dvc")
     with open(os.path.join(DATA_PROCESSED_PATH, 'metadata.json'), 'w') as f:
-        json.dump(metadata, f)
+        json.dump(metadata1, f)
 
 
 if __name__ == '__main__':    

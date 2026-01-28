@@ -78,18 +78,19 @@ x-airflow-common:
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     # Point Airflow tasks to the MLflow server (mlflow service below)
     MLFLOW_TRACKING_URI: http://mlflow:5000
+    # Host project directory for Docker mounts
+    
     # Make src importable inside containers
-    PYTHONPATH: /opt/airflow/src:/opt/airflow/scripts:$PYTHONPATH
+    PYTHONPATH: /opt/airflow/src:$PYTHONPATH
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
-    - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src:ro
     # make the host ./db available at /db as well (for MLflow server backend/artifacts)
-    - ${AIRFLOW_PROJ_DIR:-.}/db:/db
+    - ${AIRFLOW_PROJ_DIR:-.}/db:/opt/airflow/db
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -97,6 +98,8 @@ x-airflow-common:
     redis:
       condition: service_healthy
     postgres:
+      condition: service_healthy
+    mlflow:
       condition: service_healthy
 
 services:
@@ -255,7 +258,7 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
-      DEFAULT_ARTIFACT_ROOT: ${DEFAULT_ARTIFACT_ROOT:-file:///db/artifacts}
+      DEFAULT_ARTIFACT_ROOT: ${DEFAULT_ARTIFACT_ROOT:-file:///opt/airflow/db/artifacts}
     restart: always
     depends_on:
       <<: *airflow-common-depends-on

@@ -20,9 +20,10 @@ COPY src/ ./src/
 COPY pyproject.toml setup.cfg ./
 RUN pip install --no-cache-dir -e .
 
-
 COPY data/ ./data/
 COPY hourly_pipeline/ ./hourly_pipeline/
+COPY data.dvc ./data.dvc
+
 
 ENV PYTHONUNBUFFERED=1
 

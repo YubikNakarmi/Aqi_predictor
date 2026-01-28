@@ -6,21 +6,26 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.operators.bash import BashOperator
 from docker.types import Mount
+import os
 
 
-
-with DAG(dag_id="aqi_data_dag",
+with DAG(dag_id="aqi_train_dag",
          start_date=datetime(2026, 1, 1),
          schedule='@monthly',
          catchup=False,
          ) as dag:
-    
-    DB_PATH= r"/db"
-    DATA_PATH= r"/data"
+
+    # On Windows with Docker Desktop, use forward slashes
+    # The paths should exist on the host where Docker daemon is running
+    #PROJ_DIR = os.environ.get('AIRFLOW_PROJ_DIR', '/d/pypipeline')
+
+    PROJ_DIR = '/d/pypipeline'
+    DB_PATH = f"{PROJ_DIR}/db"
+    DATA_PATH = f"{PROJ_DIR}/data"
 
     mounts = [
-        Mount(source = DB_PATH, target = "/db", type="bind"),
-        Mount(source = DATA_PATH, target = "/data", type="bind"),
+        Mount(source=DB_PATH, target="/db", type="bind"),
+        Mount(source=DATA_PATH, target="/data", type="bind"),
     ]
     
     preprocess = DockerOperator(
@@ -29,9 +34,9 @@ with DAG(dag_id="aqi_data_dag",
         api_version='auto',
         auto_remove='success',
         docker_url='unix://var/run/docker.sock',
-        network_mode='aqi_network',
+        network_mode='pypipeline_aqi_network',
         mounts=mounts,
-        command = "python pipelines/preprocess.py",
+        command = "python hourly_pipeline/preprocess.py",
     )
     
     tune = DockerOperator(
@@ -39,9 +44,9 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove='success',
-        command='python pipelines/tune.py',
+        command='python hourly_pipeline/tune.py',
         docker_url='unix://var/run/docker.sock',
-        network_mode='aqi_network',
+        network_mode='pypipeline_aqi_network',
         mounts=mounts,
     )
     
@@ -50,9 +55,9 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove='success',
-        command='python pipelines/train.py',
+        command='python hourly_pipeline/train.py',
         docker_url='unix://var/run/docker.sock',
-        network_mode='aqi_network',
+        network_mode='pypipeline_aqi_network',
         mounts=mounts,
     )
     
@@ -61,9 +66,9 @@ with DAG(dag_id="aqi_data_dag",
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove='success',
-        command='python pipelines/eval.py',
+        command='python hourly_pipeline/eval.py',
         docker_url='unix://var/run/docker.sock',
-        network_mode='aqi_network',
+        network_mode='pypipeline_aqi_network',
         mounts=mounts,
     )
     
