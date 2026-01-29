@@ -132,16 +132,11 @@ services:
       start_period: 30s
     restart: always
 
-  optuna:
-    image: optuna/optuna-dashboard:latest
+  optuna-server:
+    image: python:3.9-slim
     container_name: optuna-server
-    volumes:
-      - optuna-db:/optuna/db
-    env_file:
-      - .env
-    ports:
-      - "8088:8088"
-    command: sh -c "optuna-dashboard sqlite:////optuna/db/optuna.db --host 0.0.0.0"
+
+  
   # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
   mlflow:
     build:
