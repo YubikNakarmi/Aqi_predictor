@@ -186,7 +186,7 @@ services:
     environment:
       - OPTUNA_PATH=sqlite:////optuna/db/optuna.db
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-    command: sh -c "mkdir -p /optuna/db"
+    command: sh -c "mkdir -p /optuna/db" && mlflow models serve -m models:/${TARGET_COL}_24h_service/latest -p 8000 --no-conda
     depends_on:
       mlflow:
         condition: service_healthy
