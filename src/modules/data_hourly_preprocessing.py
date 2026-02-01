@@ -225,7 +225,7 @@ class DataCleaner:
             self.save_processed(self.df_clean)
         return self.df_clean
         
-    def run_from_cleaned(self, cleaned_df: pd.DataFrame)->pd.DataFrame:
+    def run_feature_engineering(self, cleaned_df: pd.DataFrame)->pd.DataFrame:
         """Assumes cleaned_df already has pm25/o3 columns and datetime index."""
         self.df_clean = self.add_gap_length(cleaned_df)
         self.df_imputed = self.impute_values(self.df_clean)

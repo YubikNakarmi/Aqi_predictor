@@ -50,7 +50,7 @@ def main():
     
     df = pd.read_csv(DATA_RAW_PATH)
     print(f"Raw data loaded from {DATA_RAW_PATH} with shape {df.shape}")
-    main_df_cleaned = clean().run_clean(df)
+    main_df_cleaned = clean().run_clean(df) # celeans and extracts datetime features
 
     # Split the data based on env ratios
     train_df, val_df, test_df = split(main_df_cleaned, train_size=TRAIN_SPLIT, val_size=VAL_SPLIT, test_size=TEST_SPLIT)

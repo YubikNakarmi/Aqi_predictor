@@ -15,6 +15,8 @@ DEFAULT_WEATHER_COLUMNS = ["time","temp","humidity","rain1h","snowfall","windspe
 DEFAULT_MERGED_COLUMNS = ["time","o3","pm2_5","pm10","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
+OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "")
+
 logger = LoggingMixin().log
 formatter = logging.Formatter(fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
@@ -22,7 +24,9 @@ formatter = logging.Formatter(fmt="%(asctime)s | %(levelname)s | %(name)s | %(me
 for handler in logger.handlers:
     handler.setFormatter(formatter)
 
-def save_data(data:pd.DataFrame,aqi_file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv")->pd.DataFrame:
+def save_data(data:pd.DataFrame,
+              aqi_file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv",
+              column:list[str] = DEFAULT_MERGED_COLUMNS)->pd.DataFrame:
     #container directory
     #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
@@ -30,14 +34,14 @@ def save_data(data:pd.DataFrame,aqi_file_path:str = r"/opt/airflow/data/raw/shan
         if os.path.exists(aqi_file_path):
             # Check if file is empty
             if os.path.getsize(aqi_file_path) == 0:
-                aqi = pd.DataFrame(columns=DEFAULT_MERGED_COLUMNS)
+                aqi = pd.DataFrame(columns=column)
             else:
                 aqi = pd.read_csv(aqi_file_path)
                 if aqi.empty:
-                    aqi = pd.DataFrame(columns=DEFAULT_MERGED_COLUMNS)
+                    aqi = pd.DataFrame(columns=column)
             aqi = pd.concat([aqi, data], ignore_index=True)
         else:
-            aqi = pd.DataFrame(columns=DEFAULT_MERGED_COLUMNS)
+            aqi = pd.DataFrame(columns=column)
             aqi = pd.concat([aqi, data], ignore_index=True)
         aqi.to_csv(aqi_file_path, index=False)
         logger.info("Data saved successfully.")
@@ -48,7 +52,9 @@ def save_data(data:pd.DataFrame,aqi_file_path:str = r"/opt/airflow/data/raw/shan
         print(f"Error saving data: {e}")
 
 
-def load_weather_data(api:str, lat: float = 27.738065847677174, lon: float = 85.33533094823635)->pd.DataFrame:
+def load_weather_data(api:str = OPEN_WEATHER_API_KEY, 
+                      lat: float = 27.738065847677174, 
+                      lon: float = 85.33533094823635)->pd.DataFrame:
     now = dt.datetime.now()
     past = dt.datetime.now() - dt.timedelta(days=4) #to unix time conversion for api
     res_now = int(dt.datetime.timestamp(now))
@@ -88,7 +94,11 @@ def load_weather_data(api:str, lat: float = 27.738065847677174, lon: float = 85.
     return load
 
 
-def load_aqi_data(aqi_api_key: str = None,lat: float = 27.738065847677174, lon: float = 85.33533094823635) -> pd.DataFrame:
+def load_aqi_data(aqi_api_key: str = OPEN_WEATHER_API_KEY,
+                  lat: float = 27.738065847677174, 
+                  lon: float = 85.33533094823635,out_path: str = None) -> pd.DataFrame:
+    
+
     now = dt.datetime.now()
     past = dt.datetime.now() - dt.timedelta(days=4)
     res_now = int(dt.datetime.timestamp(now))
@@ -105,7 +115,7 @@ def load_aqi_data(aqi_api_key: str = None,lat: float = 27.738065847677174, lon: 
             pm10=data["components"]["pm10"]
             time = dt.datetime.fromtimestamp(data["dt"]).strftime('%Y-%m-%d %H:%M:%S')
 
-            rows.append({"time": time, "o3": o3, "pm2_5": pm25, "pm10": pm10})
+            rows.append({"date": time, "o3": o3, "pm25": pm25, "pm10": pm10})
             logger.info(f"Loaded AQI data for time: {time}")
                 
     else:

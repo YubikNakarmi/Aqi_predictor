@@ -25,10 +25,6 @@ class eval_plots:
         self.default_mlflow_artifact_dir = default_mlflow_artifact_dir
         self.default_save_dir = default_save_dir
 
-
-    
-    
-
     def plot_predictions(self, samples:int=100, save_dir:str=None):
         """Plot true vs predicted values for each horizon using pre-computed predictions.
 
@@ -82,7 +78,7 @@ class eval_plots:
     def plot_horizon_errors(self, features_exclude:list, metric="mae", save_path:str=None):
         errs = []
         for h in range(1, self.horizon+1):
-            if self.y_true and self.preds is not None:
+            if self.y_true is not None and self.preds is not None:
                 key = f"{self.target_col}_plus_{h}h"
                 y_true = self.y_true[key]
                 y_pred = self.preds[f"{key}{self.pred_suffix}"]

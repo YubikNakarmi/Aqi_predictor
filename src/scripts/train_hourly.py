@@ -12,12 +12,16 @@ from mlflow.models.signature import infer_signature
 
 
 
-def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame = None, 
-                     test: pd.DataFrame = None, target_cols: list = None ):
+def clean_and_target(horizon: int= 24,
+                     train: pd.DataFrame=None,
+                     val: pd.DataFrame = None, 
+                     test: pd.DataFrame = None, 
+                     target_cols: list = None ):
+    
     # cleaning the data with feature engineering after splitting the data
-    train_df_cleaned = clean().run_from_cleaned(train)
-    val_df_cleaned = clean().run_from_cleaned(val)
-    test_df_cleaned = clean().run_from_cleaned(test)
+    train_df_cleaned = clean().run_feature_engineering(train)
+    val_df_cleaned = clean().run_feature_engineering(val)
+    test_df_cleaned = clean().run_feature_engineering(test)
 
     # Default to pm25 and o3 if not specified
     if target_cols is None:
@@ -34,7 +38,11 @@ def clean_and_target(horizon: int= 24,train: pd.DataFrame=None,val: pd.DataFrame
 
 
 
-def split(cleaned:pd.DataFrame,train_size:float = 0.7, val_size:float = 0.15, test_size:float = 0.15, df:pd.DataFrame=None):
+def split(cleaned:pd.DataFrame,
+          train_size:float = 0.7, 
+          val_size:float = 0.15, 
+          test_size:float = 0.15, 
+          df:pd.DataFrame=None):
 
     #calculating the end of index based on number of samples and ratios
     train_end = int(len(cleaned) * train_size)
@@ -55,10 +63,14 @@ def split(cleaned:pd.DataFrame,train_size:float = 0.7, val_size:float = 0.15, te
 
     return df_train, df_val, df_test
 
-def objective(trial, df_train=None, df_val=None,features_exclude
-              =[f"pm25_plus_{i}h" for i in range(1,25)] + \
-              [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id",],h:int=1, target_col:str="pm25", value_range:tuple=(0,500)):
+def objective(trial, 
+            df_train=None, 
+            df_val=None,
+            features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + \
+              [f"o3_plus_{i}h" for i in range(1,25)] + ["segment_id",],
+            h:int=1, 
+            target_col:str="pm25", 
+            value_range:tuple=(0,500)):
     #Preparing data for 1 hour ahead prediction
     #Tuning hyperparamaters
 
@@ -124,9 +136,14 @@ def objective(trial, df_train=None, df_val=None,features_exclude
     return mae
     
 
-def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
-         optuna_path:str="sqlite:///db/optuna.db",callback:MLflowCallback=None,
-         target_col:str="pm25", value_range:tuple=(0,500), horizons:int=24):
+def tune(df_train:pd.DataFrame=None, 
+         df_val:pd.DataFrame=None,
+         trials:int=60,
+         optuna_path:str="sqlite:///db/optuna.db",
+         callback:MLflowCallback=None,
+         target_col:str="pm25", 
+         value_range:tuple=(0,500), 
+         horizons:int=24)->dict:
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
     features_exclude =[f"{target_col}_plus_{i}h" for i in range(1,horizons+1)] + \
@@ -164,12 +181,15 @@ def tune(df_train:pd.DataFrame=None, df_val:pd.DataFrame=None,trials:int=60,
 
     
 
-def train(horizons:int = 24,best_params:dict=None,
-         df_val:pd.DataFrame=None,df_train:pd.DataFrame=None,features_exclude
-              =[f"pm25_plus_{i}h" for i in range(1,25)] + \
+def train(horizons:int = 24,
+          best_params:dict=None,
+         df_val:pd.DataFrame=None,
+         df_train:pd.DataFrame=None,
+         features_exclude =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
                     ["segment_id","imputation_confidence"],
-         target_col:str="pm25", value_range:tuple=(0,500)):
+         target_col:str="pm25", 
+         value_range:tuple=(0,500)):
     #training all models for 24 horizons using best params
  
     if best_params is None:
@@ -232,7 +252,8 @@ def train(horizons:int = 24,best_params:dict=None,
             
     return models, val_metrics_mae, val_metrics_rmse, sign
     
-def test(horizons:int = 24, models:dict=None,features_exclude
+def test(horizons:int = 24, 
+         models:dict=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
                     ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None, 

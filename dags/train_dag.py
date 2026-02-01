@@ -84,20 +84,19 @@ with DAG(dag_id="aqi_train_dag",
         network_mode='pypipeline_aqi_network',
         mounts=mounts,
         environment=shared_env,
-    )shared_envate = DockerOperator(
+    )
+    eval = DockerOperator(
         task_id='evaluate_model',
         image='aqi-trainer:latest',
         api_version='auto',
         auto_remove='success',
         command='python hourly_pipeline/eval.py',
-        environment={
-            'MLFLOW_TRACKING_URI': 'http://mlflow:5000',
-        },
+        environment=shared_env,
         docker_url='unix://var/run/docker.sock',
         network_mode='pypipeline_aqi_network',
         mounts=mounts,
     )
     
     # Set task dependencies
-    preprocess >> tune >> train >> evaluate
+    preprocess >> tune >> train >> eval
 

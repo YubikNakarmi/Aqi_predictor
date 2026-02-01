@@ -6,20 +6,24 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 import os
-from scripts import ingestion_run
+from scripts.ingestion_hourly import load_aqi_data as ingestion_run
 
-host_path = "D:/pypipeline/data" #environment variable
+host_path = "/d/pypipeline/data" #environment variable
+OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "")
 
 with DAG(dag_id="aqi_data_dag",
          start_date=datetime(2025, 8, 1),
-         schedule='@weekly',
+         schedule='@daily',
          catchup=False,
          ) as dag:
             fetch_data = PythonOperator(
                 task_id='fetch_and_load',
-                python_callable=ingestion_run,
-                op_kwargs={"api_key": os.environ.get("OPEN_WEATHER_API_KEY"), "dest": host_path}# container env key
+                python_callable=ingestion_run(aqi_api_key=OPEN_WEATHER_API_KEY,),
+                # container env key
             )
+
+            environments = {
+                'OPEN_WEATHER_API_KEY': os.environ.get('OPEN_WEATHER_API_KEY'),}
 
             pred = DockerOperator(
                 task_id='run_data_processing',
@@ -30,8 +34,7 @@ with DAG(dag_id="aqi_data_dag",
                 container_name='ingest',
                 auto_remove="force",#auto removes container to avoid conflicts
                 mounts=[Mount(source=host_path, target='/opt/airflow/data', type='bind')],#mounting external volume
-                environment={"AQI_API_KEY":"88370b78ae71f620f8bf5d8ca57bdb1d8d55c4bf",
-                             },#setting environment variable inside container
+                environment=environments,#setting environment variable inside container
           
             )
 
