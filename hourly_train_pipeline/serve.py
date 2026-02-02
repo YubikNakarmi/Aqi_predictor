@@ -6,9 +6,9 @@ TARGET_COL = os.getenv("TARGET_COL", "pm25")
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 
-class ServeModel(mlflow.xgboost.PythonModel):
+class ServeModel(mlflow.pyfunc.PythonModel):
     
-    def load_context(self):
+    def load_context(self,context):
         self.models = {h:mlflow.pyfunc.load_model(f"models:/{TARGET_COL}_plus_{h}h/latest") for h in range(1, 25)}
 
     def predict(self ,model_input):
