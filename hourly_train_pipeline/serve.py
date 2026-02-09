@@ -11,7 +11,7 @@ class ServeModel(mlflow.pyfunc.PythonModel):
     def load_context(self,context):
         self.models = {h:mlflow.pyfunc.load_model(f"models:/{TARGET_COL}_plus_{h}h/latest") for h in range(1, 25)}
 
-    def predict(self ,model_input):
+    def predict(self ,model_input,context):
         preds = {}
         for h, model in self.models.items():
             preds[f"{TARGET_COL}_plus_{h}h_pred"] = model.predict(model_input)
@@ -28,3 +28,6 @@ def main():
             python_model=ServeModel(),
             registered_model_name=f"hourly_{TARGET_COL}_24h_service"
         )
+
+if __name__ == "__main__":
+    main()

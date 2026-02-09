@@ -7,8 +7,12 @@ import json
 import click
 
 class DataCleaner:
-    def __init__(self, input_csv=None, output_csv=None, input_df=None, small_gap=6, 
-                 medium_gap=12, very_large_gap=24):
+    def __init__(self, input_csv=None, 
+                 output_csv=None, 
+                 input_df=None, 
+                 small_gap=6, 
+                 medium_gap=12, 
+                 very_large_gap=24):
         
         self.input_csv = input_csv
         self.output_csv = output_csv

@@ -31,18 +31,16 @@ with DAG(dag_id="aqi_train_dag",
     # Shared environment variables for all trainer tasks
     shared_env = {
         'MLFLOW_TRACKING_URI': 'http://mlflow:5000',
-        'MYSQL_HOST': os.environ.get('MYSQL_HOST', 'host.docker.internal'),
-        'MYSQL_PW': os.environ.get('MYSQL_PW', ''),
-        'MYSQL_USER': os.environ.get('MYSQL_USER', 'root'),
-        'MYSQLURL': os.environ.get('MYSQLURL', ''),
-        'AZURE_STORAGE_CONNECTION_STRING': os.environ.get('AZURE_STORAGE_CONNECTION_STRING', ''),
         'HORIZON': os.environ.get('HORIZON', '24'),
+
         'TRAIN_SPLIT': os.environ.get('TRAIN_SPLIT', '0.7'),
         'VAL_SPLIT': os.environ.get('VAL_SPLIT', '0.15'),
         'TEST_SPLIT': os.environ.get('TEST_SPLIT', '0.15'),
+
         'PREDICTIONS_DIR': os.environ.get('PREDICTIONS_DIR', 'data/predictions/hourly/us_paro_hourly/'),
         'ARTIFACTS_PATH': os.environ.get('ARTIFACTS_PATH', 'data/artifacts/'),
         'DATA_PROCESSED_PATH': os.environ.get('DATA_PROCESSED_PATH', 'data/processed/hourly/us_paro_hourly/'),
+        
         'STATION_NAME': os.environ.get('STATION_NAME', 'us_paro_hourly'),
         'TARGET_COLS': os.environ.get('TARGET_COLS', 'pm25,o3'),
         'TARGET_COL': os.environ.get('TARGET_COL', 'pm25'),

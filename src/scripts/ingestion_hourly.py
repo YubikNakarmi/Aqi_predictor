@@ -25,8 +25,9 @@ for handler in logger.handlers:
     handler.setFormatter(formatter)
 
 def save_data(data:pd.DataFrame,
-              aqi_file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv",
-              column:list[str] = DEFAULT_MERGED_COLUMNS)->pd.DataFrame:
+              file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv",
+              column:list[str] = DEFAULT_MERGED_COLUMNS,
+              aqi_file_path:str = None)->pd.DataFrame:
     #container directory
     #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
