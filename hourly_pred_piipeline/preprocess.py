@@ -10,6 +10,9 @@ logger = setup_logging(__name__)
 
 key = os.environ.get("OPEN_WEATHER_API_KEY", "")
 
+COLUMNS = ["date","o3","pm25","pm10"]
+
+
 
 def ingest():
     data = ingestion_hourly.load_aqi_data(
@@ -17,8 +20,17 @@ def ingest():
         lookback_hours=24,
     )
     logger.info("Data preview:\n%s", data.head())\
+    
+    ingestion_hourly.save_data(
+        data=data,
+        file_path=r"D:\pypipeline\data\raw\pred_ingestion\us_paro\us_paro_hourly.csv"
+        ,column=COLUMNS)
 
+def preprocess():
 
+    df = pd.read_csv(r"D:\pypipeline\data\raw\pred_ingestion\us_paro\us_paro_hourly.csv")
+    cleaner = DataCleaner()
+    df_1 = cleaner.
 
 if __name__ == "__main__":
     ingest()

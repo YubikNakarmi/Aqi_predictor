@@ -19,26 +19,25 @@ OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "84737501867f684f5
 logger = setup_logging(__name__)
 
 def save_data(data:pd.DataFrame,
-              file_path:str,
               column:list[str] = DEFAULT_MERGED_COLUMNS,
-              aqi_file_path:str = None)->pd.DataFrame:
+              file_path:str = None)->pd.DataFrame:
     #container directory
-    #aqi_file_path = r"D:\pypipeline\scripts\test.csv" #local directory
+    #file_path = r"D:\pypipeline\scripts\test.csv" #local directory
 
     try:
-        if os.path.exists(aqi_file_path):
+        if os.path.exists(file_path):
             # Check if file is empty
-            if os.path.getsize(aqi_file_path) == 0:
+            if os.path.getsize(file_path) == 0:
                 aqi = pd.DataFrame(columns=column)
             else:
-                aqi = pd.read_csv(aqi_file_path)
+                aqi = pd.read_csv(file_path)
                 if aqi.empty:
                     aqi = pd.DataFrame(columns=column)
             aqi = pd.concat([aqi, data], ignore_index=True)
         else:
             aqi = pd.DataFrame(columns=column)
             aqi = pd.concat([aqi, data], ignore_index=True)
-        aqi.to_csv(aqi_file_path, index=False)
+        aqi.to_csv(file_path, index=False)
         logger.info("Data saved successfully.")
         
     except Exception:

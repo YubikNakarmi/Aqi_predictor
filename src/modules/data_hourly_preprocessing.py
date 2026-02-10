@@ -99,23 +99,41 @@ class DataCleaner:
         df.loc[df["pm25"] < 0, "pm25"] = pd.NA
         df.loc[df["o3"] < 0, "o3"] = pd.NA
         df.loc[df["pm25"] > 500, "pm25"] = pd.NA
-        df["date"] = pd.to_datetime(df["date"])
-        df.set_index("date", inplace=True)
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"])
+            df.set_index("date", inplace=True)
+        elif not isinstance(df.index, pd.DatetimeIndex):
+            raise ValueError("Data must have a 'date' column or a DatetimeIndex.")
         deltas = df.index.sort_values().diff().value_counts()
         logger.info("Top time deltas:\n%s", deltas.head())
 
         df = df.asfreq("H")
+        logger.info("Cleaned and indexed data with shape %s", df.shape)
+        return df
+
+    def add_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Adding time-based features")
+        df = df.copy()
+        if not isinstance(df.index, pd.DatetimeIndex):
+            raise ValueError("DatetimeIndex required for time features.")
         df["hour"] = df.index.hour
         df["day_of_week"] = df.index.dayofweek
         df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
         df["is_night"] = df["hour"].isin([0, 1, 2, 3, 4, 5]).astype(int)
+        return df
+
+    def add_missing_flags(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Adding missing-value flags")
+        df = df.copy()
         df["pm25_missing"] = df["pm25"].isna().astype(int)
         df["o3_missing"] = df["o3"].isna().astype(int)
-        logger.info("Cleaned and indexed data with shape %s", df.shape)
         return df
 
     def add_gap_length(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Computing gap length features")
+        df = df.copy()
+        if "pm25_missing" not in df.columns or "o3_missing" not in df.columns:
+            df = self.add_missing_flags(df)
         pm25_run_id = (df["pm25_missing"] != df["pm25_missing"].shift()).cumsum()
         o3_run_id = (df["o3_missing"] != df["o3_missing"].shift()).cumsum()
         df["pm25_gap_length"] = df["pm25_missing"].groupby(pm25_run_id).transform("sum")
@@ -127,6 +145,16 @@ class DataCleaner:
         logger.info("Imputing missing values")
         logger.info("NA counts before imputation:\n%s", df.isna().sum())
         df_imputation = df.copy()
+        if not isinstance(df_imputation.index, pd.DatetimeIndex):
+            raise ValueError("DatetimeIndex required for time-based imputation.")
+        if "pm25_gap_length" not in df_imputation.columns or "o3_gap_length" not in df_imputation.columns:
+            df_imputation = self.add_gap_length(df_imputation)
+        if "hour" not in df_imputation.columns:
+            df_imputation = self.add_time_features(df_imputation)
+        if "was_imputed" not in df_imputation.columns:
+            df_imputation["was_imputed"] = 0
+        if "imputation_confidence" not in df_imputation.columns:
+            df_imputation["imputation_confidence"] = "none"
         small_gap_mask_pm25 = df_imputation["pm25_gap_length"] <= self.small_gap
         small_gap_mask_o3 = df_imputation["o3_gap_length"] <= self.small_gap
         logger.info("Applying small-gap interpolation")
@@ -145,8 +173,8 @@ class DataCleaner:
         medium_gap_mask_o3 = (df_imputation["o3_gap_length"] > self.small_gap) & \
         (df_imputation["o3_gap_length"] <= self.medium_gap)
         logger.info("Applying medium-gap KNN imputation")
-        df_imputation["hour_sin"] = np.sin(2 * np.pi * df_imputation['hour'] / 24)
-        df_imputation["hour_cos"] = np.cos(2 * np.pi * df_imputation['hour'] / 24)
+        df_imputation["hour_sin"] = np.sin(2 * np.pi * df_imputation["hour"] / 24)
+        df_imputation["hour_cos"] = np.cos(2 * np.pi * df_imputation["hour"] / 24)
         cols = ['pm25', 'o3', 'hour_sin', 'hour_cos']
         imp = KNNImputer(n_neighbors=6)
 
@@ -169,52 +197,55 @@ class DataCleaner:
 
     def add_segmentation(self, df_imputation: pd.DataFrame) -> pd.DataFrame:
         logger.info("Adding segment identifiers")
+        df_imputation = df_imputation.copy()
+        if "pm25_gap_length" not in df_imputation.columns or "o3_gap_length" not in df_imputation.columns:
+            df_imputation = self.add_gap_length(df_imputation)
         segment = (
             (df_imputation['pm25_missing'].shift(fill_value=0) == 1) & (df_imputation['pm25_gap_length'].shift(fill_value=0) > self.very_large_gap)
         ) | (
             (df_imputation['o3_missing'].shift(fill_value=0) == 1) & (df_imputation['o3_gap_length'].shift(fill_value=0) > self.very_large_gap)
         )
         df_imputation["segment_id"] = segment.cumsum()
-        df_imputation["pm25_missing"] = df_imputation["pm25"].isna().astype(int)
-        df_imputation["o3_missing"] = df_imputation["o3"].isna().astype(int)
         logger.info("Segmentation complete")
         return df_imputation
 
-    def engineer_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def engineer_features(self, df: pd.DataFrame, segment_col: str = "segment_id") -> pd.DataFrame:
         logger.info("Engineering features")
         df_engineering = df.copy()
+        if segment_col not in df_engineering.columns:
+            df_engineering[segment_col] = 0
         lags = [i for i in range(1, 25)]
         logger.info("Adding lag features")
         for lag in lags:
-            df_engineering[f"pm25_lag_{lag}"] = df_engineering.groupby("segment_id")["pm25"].shift(lag)
-            df_engineering[f"o3_lag_{lag}"] = df_engineering.groupby("segment_id")["o3"].shift(lag)
+            df_engineering[f"pm25_lag_{lag}"] = df_engineering.groupby(segment_col)["pm25"].shift(lag)
+            df_engineering[f"o3_lag_{lag}"] = df_engineering.groupby(segment_col)["o3"].shift(lag)
         windows = [3, 6, 12, 24]
         logger.info("Adding rolling window features")
         for w in windows:
             df_engineering[f'pm25_roll_{w}'] = (
-                df_engineering.groupby('segment_id')['pm25']
+                df_engineering.groupby(segment_col)["pm25"]
                 .apply(lambda s: s.shift(1).rolling(window=w, min_periods=1).mean())
                 .reset_index(level=0, drop=True)
             )
             df_engineering[f'o3_roll_{w}'] = (
-                df_engineering.groupby('segment_id')['o3']
+                df_engineering.groupby(segment_col)["o3"]
                 .apply(lambda s: s.shift(1).rolling(window=w, min_periods=1).mean())
                 .reset_index(level=0, drop=True)
             )
         logger.info("Adding slope and ratio features")
         df_engineering["pm25_slope_3h"] = (
-            df_engineering.groupby("segment_id")["pm25"].rolling(window=3, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
+            df_engineering.groupby(segment_col)["pm25"].rolling(window=3, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
         df_engineering["o3_slope_3h"] = (
-            df_engineering.groupby("segment_id")["o3"].rolling(window=3, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
+            df_engineering.groupby(segment_col)["o3"].rolling(window=3, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
         df_engineering["pm25_slope_12h"] = (
-            df_engineering.groupby("segment_id")["pm25"].rolling(window=12, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
+            df_engineering.groupby(segment_col)["pm25"].rolling(window=12, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
         df_engineering["o3_slope_12h"] = (
-            df_engineering.groupby("segment_id")["o3"].rolling(window=12, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
+            df_engineering.groupby(segment_col)["o3"].rolling(window=12, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
-        df_engineering["pm25_o3_ratio"] = df_engineering.groupby("segment_id").apply(lambda g: g["pm25"] / g["o3"]).reset_index(level=0, drop=True)
+        df_engineering["pm25_o3_ratio"] = df_engineering.groupby(segment_col).apply(lambda g: g["pm25"] / g["o3"]).reset_index(level=0, drop=True)
         df_engineering["pm25_o3_ratio"].replace([np.inf, -np.inf], np.nan, inplace=True)
         logger.info("Feature engineering complete with shape %s", df_engineering.shape)
         return df_engineering
@@ -231,6 +262,8 @@ class DataCleaner:
         logger.info("Negative value count: %s", neg_count)
         self.df_merged = self.extract_pm_o3(self.df_raw)
         self.df_clean = self.clean_and_index(self.df_merged)
+        self.df_clean = self.add_time_features(self.df_clean)
+        self.df_clean = self.add_missing_flags(self.df_clean)
         self.df_clean = self.add_gap_length(self.df_clean)
 
         self.df_imputed = self.impute_values(self.df_clean)
@@ -249,6 +282,8 @@ class DataCleaner:
         self.df_raw = df_raw
         self.df_merged = self.extract_pm_o3(self.df_raw)
         self.df_clean = self.clean_and_index(self.df_merged)
+        self.df_clean = self.add_time_features(self.df_clean)
+        self.df_clean = self.add_missing_flags(self.df_clean)
         if self.output_csv:
             self.save_processed(self.df_clean)
         logger.info("Clean-only pipeline complete")
@@ -257,7 +292,12 @@ class DataCleaner:
     def run_feature_engineering(self, cleaned_df: pd.DataFrame)->pd.DataFrame:
         """Assumes cleaned_df already has pm25/o3 columns and datetime index."""
         logger.info("Starting feature engineering pipeline")
-        self.df_clean = self.add_gap_length(cleaned_df)
+        self.df_clean = cleaned_df.copy()
+        if "hour" not in self.df_clean.columns:
+            self.df_clean = self.add_time_features(self.df_clean)
+        if "pm25_missing" not in self.df_clean.columns or "o3_missing" not in self.df_clean.columns:
+            self.df_clean = self.add_missing_flags(self.df_clean)
+        self.df_clean = self.add_gap_length(self.df_clean)
         self.df_imputed = self.impute_values(self.df_clean)
         self.df_segmented = self.add_segmentation(self.df_imputed)
         self.df_features = self.engineer_features(self.df_segmented)
