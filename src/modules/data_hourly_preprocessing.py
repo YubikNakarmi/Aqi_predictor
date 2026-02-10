@@ -93,6 +93,13 @@ class DataCleaner:
         df_merged["o3_target"] = df_merged["o3"]
         return df_merged
 
+    def add_target(self, df: pd.DataFrame,target:str = "pm25",horizon: int = 24) -> pd.DataFrame:
+        logger.info("Adding target columns for horizon %s", horizon)
+        df = df.copy()
+        for h in range(1, horizon + 1):
+            df[f"{target}_plus_{h}h"] = df[target].shift(-h)
+        return df
+
     def clean_and_index(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Cleaning and indexing data")
         df = df.copy()

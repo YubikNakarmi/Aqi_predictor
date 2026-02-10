@@ -154,13 +154,11 @@ def tune(df_train:pd.DataFrame=None,
          callback:MLflowCallback=None,
          target_col:str="pm25", 
          value_range:tuple=(0,500), 
-         horizons:int=24)->dict:
+         horizons:int=24,
+         features_exclude=[f"pm25_plus_{i}h" for i in range(1,25)] + \
+                        [f"o3_plus_{i}h" for i in range(1,25)] + \
+                        ["segment_id","imputation_confidence"])->dict:
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
-
-    features_exclude =[f"{target_col}_plus_{i}h" for i in range(1,horizons+1)] + \
-                     [f"o3_plus_{i}h" for i in range(1,horizons+1)] + \
-                     [f"pm25_plus_{i}h" for i in range(1,horizons+1)] + \
-                     ["segment_id",]
 
 
     ''' need to configure for airflow container path '''
@@ -229,8 +227,8 @@ def train(horizons:int = 24,
         eval_mask = df_val[target_key].notnull() & (df_val[target_key] >= min_val) \
         & (df_val[target_key] <= max_val)
         #using only valid data points
-        y = df_train.loc[train_mask, target_key].reset_index(drop=True).astype(float)
-        X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True)
+        y = df_train.loc[train_mask, target_key].reset_index(drop=True).astype(float) #target 
+        X = df_train.loc[train_mask].drop(columns=features_exclude).reset_index(drop=True) #features
 
 
         y_val = df_val.loc[eval_mask, target_key].reset_index(drop=True).astype(float)
@@ -278,8 +276,10 @@ def test(horizons:int = 24,
          models:dict=None,features_exclude
               =[f"pm25_plus_{i}h" for i in range(1,25)] + \
               [f"o3_plus_{i}h" for i in range(1,25)] + \
-                    ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None, 
+            ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None, 
          target_col:str="pm25", value_range:tuple=(0,500)):
+    
+
     test_metrics = {}
     min_val, max_val = value_range
 

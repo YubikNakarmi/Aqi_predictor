@@ -42,16 +42,16 @@ def main():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI) #set mlflow tracking uri to server
     # mlflow.set_experiment(f"xgb_{TARGET_COL}_hourly_training")    
     mlflow.set_experiment(f"test")
+    
+    features_exclude = [f"{TARGET_COL}_plus_{i}h" for i in range(1, HORIZON + 1)] + \
+                       [f"o3_plus_{i}h" for i in range(1, HORIZON + 1)] + \
+                       [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
+                       ["segment_id", "imputation_confidence","pm25_target","o3_target"]
 
 
     models, mae_metrics,rmse_metrics ,signature = train(df_val=val_df, df_train=train_df, horizons=HORIZON, 
                                        best_params=best_params, target_col=TARGET_COL,
-                                       value_range=(VALUE_MIN, VALUE_MAX))
-
-    features_exclude = [f"{TARGET_COL}_plus_{i}h" for i in range(1, HORIZON + 1)] + \
-                       [f"o3_plus_{i}h" for i in range(1, HORIZON + 1)] + \
-                       [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
-                       ["segment_id", "imputation_confidence"]
+                                       value_range=(VALUE_MIN, VALUE_MAX),features_exclude=features_exclude)
 
     #mlflow logging
     for h in range(1, HORIZON + 1):

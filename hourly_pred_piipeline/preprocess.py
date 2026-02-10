@@ -32,7 +32,8 @@ def preprocess():
     df = df.drop(columns=["pm10,"])
     cleaner = DataCleaner()
     df_1 = cleaner.add_time_features(df)
-    df_2 = cleaner.handle_missing_values(df_1)
+    df_2 = cleaner.add_missing_flags(df_1)
+    
 
 
 if __name__ == "__main__":

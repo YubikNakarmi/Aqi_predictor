@@ -30,7 +30,7 @@ def main():
     features_exclude = [f"{TARGET_COL}_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        [f"o3_plus_{i}h" for i in range(1, HORIZON + 1)] + \
                        [f"pm25_plus_{i}h" for i in range(1, HORIZON + 1)] + \
-                       ["segment_id", "imputation_confidence"]
+                       ["segment_id", "imputation_confidence","pm25_target","o3_target"]
     
     client = MlflowClient()
     horizon_predictions = []  # collect predictions per horizon to concatenate later

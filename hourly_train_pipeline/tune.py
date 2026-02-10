@@ -36,6 +36,8 @@ def main():
         tracking_uri=mlflow.get_tracking_uri(), 
         metric_name="mae", #auto logs runs
     )
+
+    
     
     mlflow_sanity_check()
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)

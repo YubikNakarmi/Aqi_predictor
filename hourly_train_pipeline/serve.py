@@ -25,11 +25,15 @@ def main():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_serving")
 
+    
+
     with mlflow.start_run(run_name="hourly_aqi_model_serving"):
         mlflow.pyfunc.log_model(
             artifact_path="model",
             python_model=ServeModel(),
-            registered_model_name=f"hourly_{TARGET_COL}_24h_service"
+            registered_model_name=f"hourly_{TARGET_COL}_24h_service",
+            input_example=[]
+
         )
         logger.info("Logged serving model to MLflow")
 
