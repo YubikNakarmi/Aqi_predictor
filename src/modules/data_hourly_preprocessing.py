@@ -252,8 +252,9 @@ class DataCleaner:
         df_engineering["o3_slope_12h"] = (
             df_engineering.groupby(segment_col)["o3"].rolling(window=12, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
-        df_engineering["pm25_o3_ratio"] = df_engineering.groupby(segment_col).apply(lambda g: g["pm25"] / g["o3"]).reset_index(level=0, drop=True)
-        df_engineering["pm25_o3_ratio"].replace([np.inf, -np.inf], np.nan, inplace=True)
+        ratio = df_engineering["pm25"] / df_engineering["o3"]
+        ratio = ratio.replace([np.inf, -np.inf], np.nan)
+        df_engineering["pm25_o3_ratio"] = ratio
         logger.info("Feature engineering complete with shape %s", df_engineering.shape)
         return df_engineering
 
