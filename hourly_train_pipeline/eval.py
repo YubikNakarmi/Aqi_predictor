@@ -5,6 +5,7 @@ import os
 from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
 from modules.logging_utils import setup_logging
+import xgboost as xgb
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -65,7 +66,9 @@ def main():
             X = df_test.loc[test_mask].drop(features_exclude, axis=1).copy()
 
             y = df_test.loc[test_mask, target_key]
-            y_pred = model.predict(X) #predict
+            # mlflow.xgboost.load_model returns a Booster that expects DMatrix input
+            X_dmatrix = xgb.DMatrix(X)
+            y_pred = model.predict(X_dmatrix)  # predict
             logger.info("Predictions for horizon %sh completed.", h)
             
             

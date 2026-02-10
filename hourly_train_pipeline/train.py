@@ -60,7 +60,6 @@ def main():
 
             mlflow.log_params(best_params)
             mlflow.log_params({"type": "xgboost", "target": TARGET_COL})#log model type and target
-            mlflow.log_params(list(features_exclude), artifact_path="features_excluded")
             mlflow.set_tag("horizon", f"{h}h")
 
             key = f"{TARGET_COL}_plus_{h}h"
