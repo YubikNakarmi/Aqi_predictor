@@ -29,8 +29,11 @@ def ingest():
 def preprocess():
 
     df = pd.read_csv(r"D:\pypipeline\data\raw\pred_ingestion\us_paro\us_paro_hourly.csv")
+    df = df.drop(columns=["pm10,"])
     cleaner = DataCleaner()
-    df_1 = cleaner.
+    df_1 = cleaner.add_time_features(df)
+    df_2 = cleaner.handle_missing_values(df_1)
+
 
 if __name__ == "__main__":
     ingest()
