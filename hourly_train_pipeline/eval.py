@@ -4,6 +4,7 @@ import mlflow
 import os 
 from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
+from modules.logging_utils import setup_logging
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -12,6 +13,8 @@ TARGET_COL = os.getenv("TARGET_COL", "pm25")  # Default to pm25, can be "o3" or 
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro_hourly")
+
+logger = setup_logging(__name__)
 
 
 
@@ -63,7 +66,7 @@ def main():
 
             y = df_test.loc[test_mask, target_key]
             y_pred = model.predict(X) #predict
-            print(f"Predictions for horizon {h}h completed.")
+            logger.info("Predictions for horizon %sh completed.", h)
             
             
             eval_df= pd.DataFrame({
@@ -114,7 +117,7 @@ def main():
             try:
                 mlflow.validate_evaluation_results(candidate_result=result,
                                                validation_thresholds=thresold)
-                print(f"Model evaluation for horizon {h}h met the specified thresholds.")
+                logger.info("Model evaluation for horizon %sh met the specified thresholds.", h)
 
                 if current_model_version:
                     client.set_model_version_tag(name=model_name,
@@ -130,15 +133,15 @@ def main():
                         version=current_model_version,
                         stage="staging"
                     )
-                    print(f"Model for horizon {h}h promoted to 'staging' stage.")
+                    logger.info("Model for horizon %sh promoted to 'staging' stage.", h)
                 else:
-                    print(f"Warning: Could not find model version for {model_name}")
+                    logger.warning("Could not find model version for %s", model_name)
 
             except mlflow.exceptions.MlflowException as e:
-                print(f"Model evaluation did not meet the specified thresholds: {e}")
+                logger.info("Model evaluation did not meet the specified thresholds: %s", e)
                 continue
 
-            print(result.metrics["mean_absolute_error"])
+            logger.info("Mean absolute error: %s", result.metrics["mean_absolute_error"])
         mlflow.end_run()
 
     if horizon_predictions:

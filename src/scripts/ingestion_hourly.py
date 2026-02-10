@@ -3,29 +3,23 @@ import requests
 import os
 import click
 import datetime as dt
-import logging
-from airflow.utils.log.logging_mixin import LoggingMixin
+from modules.logging_utils import setup_logging
 
 
-DEFAULT_AQI_COLUMNS = ["time","o3","pm2_5","pm10"]
+DEFAULT_AQI_COLUMNS = ["date","o3","pm25","pm10"]
 
-DEFAULT_WEATHER_COLUMNS = ["time","temp","humidity","rain1h","snowfall","windspeed"
+DEFAULT_WEATHER_COLUMNS = ["date","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
-DEFAULT_MERGED_COLUMNS = ["time","o3","pm2_5","pm10","temp","humidity","rain1h","snowfall","windspeed"
+DEFAULT_MERGED_COLUMNS = ["date","o3","pm25","pm10","temp","humidity","rain1h","snowfall","windspeed"
                            ,"weather","weather_description"]
 
-OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "")
+OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "84737501867f684f51f05bd39eb89b6c")
 
-logger = LoggingMixin().log
-formatter = logging.Formatter(fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-for handler in logger.handlers:
-    handler.setFormatter(formatter)
+logger = setup_logging(__name__)
 
 def save_data(data:pd.DataFrame,
-              file_path:str = r"/opt/airflow/data/raw/shankapark_realtime.csv",
+              file_path:str,
               column:list[str] = DEFAULT_MERGED_COLUMNS,
               aqi_file_path:str = None)->pd.DataFrame:
     #container directory
@@ -46,11 +40,9 @@ def save_data(data:pd.DataFrame,
             aqi = pd.concat([aqi, data], ignore_index=True)
         aqi.to_csv(aqi_file_path, index=False)
         logger.info("Data saved successfully.")
-        print("Data saved successfully.")
         
-    except Exception as e:
-        logger.error(f"Error saving data: {e}")
-        print(f"Error saving data: {e}")
+    except Exception:
+        logger.exception("Error saving data")
 
 
 def load_weather_data(api:str = OPEN_WEATHER_API_KEY, 
@@ -61,7 +53,10 @@ def load_weather_data(api:str = OPEN_WEATHER_API_KEY,
     res_now = int(dt.datetime.timestamp(now))
     res_past = int(dt.datetime.timestamp(past))
     
-    weather_url = f"https://history.openweathermap.org/data/2.5/history/city?lat=27.738065847677174&lon=85.33533094823635&type=hour&start={res_past}&end={res_now}&units=metric&appid={api}"
+    weather_url = (
+        "https://history.openweathermap.org/data/2.5/history/city"
+        f"?lat={lat}&lon={lon}&type=hour&start={res_past}&end={res_now}&units=metric&appid={api}"
+    )
     response = requests.get(weather_url)
     rows = []
     if response.status_code == 200:
@@ -83,32 +78,40 @@ def load_weather_data(api:str = OPEN_WEATHER_API_KEY,
             except KeyError:
                 snow = 0.0
 
-            rows.append({"time": time, "temp": temp, "humidity": humidity, 
+            rows.append({"date": time, "temp": temp, "humidity": humidity, 
                          "windspeed": windspeed, "weather": weather, "weather_description": weather_description, 
-                         "rain": rain, "snow": snow})
+                         "rain1h": rain, "snowfall": snow})
             logger.info(f"Loaded weather data for time: {time}")
     else:
-        print("Failed to load weather data")
-        logger.error("Failed to load weather data from API response code: {response.status_code}, returning empty dataframe")
+        logger.error(
+            "Failed to load weather data from API response code: %s, returning empty dataframe",
+            response.status_code,
+        )
 
     load = pd.DataFrame(rows, columns=DEFAULT_WEATHER_COLUMNS)
     return load
 
 
-def load_aqi_data(aqi_api_key: str = OPEN_WEATHER_API_KEY,
-                  lat: float = 27.738065847677174, 
-                  lon: float = 85.33533094823635,out_path: str = None) -> pd.DataFrame:
-    
-
+def load_aqi_data(
+    aqi_api_key: str = OPEN_WEATHER_API_KEY,
+    lat: float = 27.738065847677174,
+    lon: float = 85.33533094823635,
+    out_path: str = None,
+    lookback_hours: int | None = None,
+    lookback_days: int = 4,
+) -> pd.DataFrame:
     now = dt.datetime.now()
-    past = dt.datetime.now() - dt.timedelta(days=4)
+    if lookback_hours is not None:
+        past = now - dt.timedelta(hours=lookback_hours)
+    else:
+        past = now - dt.timedelta(days=lookback_days)
     res_now = int(dt.datetime.timestamp(now))
     res_past = int(dt.datetime.timestamp(past))
     url = f"http://api.openweathermap.org/data/2.5/air_pollution/history?lat={lat}&lon={lon}&start={res_past}&end={res_now}&appid={aqi_api_key}"
     rows = []
     response = requests.get(url) 
 
-    if response.status_code == 200:
+    if response.ok:
         data=response.json()
         for data in data["list"]:
             o3=data["components"]["o3"]
@@ -120,22 +123,25 @@ def load_aqi_data(aqi_api_key: str = OPEN_WEATHER_API_KEY,
             logger.info(f"Loaded AQI data for time: {time}")
                 
     else:
-        print("Failed to aqi load data")
-        logger.error("Failed to load AQI data from API response code: {response.status_code}, returning empty dataframe")
+        logger.error(
+            "Failed to load AQI data from API response code: %s, returning empty dataframe",
+            response.status_code,
+        )
 
     load = pd.DataFrame(rows, columns=DEFAULT_AQI_COLUMNS)
     return load
 
 ''' module runner for airflow compose'''
-def run(api_key:str,lat: float = 27.738065847677174, 
-        lon: float = 85.33533094823635, dest:str= r"/opt/airflow/data/raw/shankapark_realtime.csv"):
+def run(api_key:str,
+         dest:str,
+        lat: float = 27.738065847677174, 
+        lon: float = 85.33533094823635,):
 
     aqi_load = load_aqi_data(api_key)
     weather_load = load_weather_data(api_key)
-    load = pd.merge(aqi_load, weather_load, on='time', how='inner')
+    load = pd.merge(aqi_load, weather_load, on='date', how='inner')
 
     if load.empty:
-        print("No data loaded. Exiting.")
         logger.error("No data loaded. Exiting.")
         return
     else:
@@ -149,14 +155,13 @@ def run(api_key:str,lat: float = 27.738065847677174,
 @click.option('--lat', default=27.738065847677174, help='Latitude for AQI data and weather data')
 @click.option('--lon', default=85.33533094823635, help='Longitude for AQI data and weather data')
 
-def main(api_key):#cli script entry
+def main(api_key,lat,lon):#cli script entry
     
-    aqi_load = load_aqi_data(api_key)
-    weather_load = load_weather_data(api_key)
-    load = pd.merge(aqi_load, weather_load, on='time', how='inner')
+    aqi_load = load_aqi_data(api_key, lat, lon)
+    weather_load = load_weather_data(api_key, lat, lon)
+    load = pd.merge(aqi_load, weather_load, on='date', how='inner')
 
     if load.empty:
-        print("No data loaded. Exiting.")
         logger.error("No data loaded. Exiting.")
         return
     else:

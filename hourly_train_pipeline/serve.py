@@ -1,9 +1,12 @@
 import mlflow
 import os
 import pandas as pd
+from modules.logging_utils import setup_logging
 
 TARGET_COL = os.getenv("TARGET_COL", "pm25")
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+
+logger = setup_logging(__name__)
 
 
 class ServeModel(mlflow.pyfunc.PythonModel):
@@ -28,6 +31,7 @@ def main():
             python_model=ServeModel(),
             registered_model_name=f"hourly_{TARGET_COL}_24h_service"
         )
+        logger.info("Logged serving model to MLflow")
 
 if __name__ == "__main__":
     main()

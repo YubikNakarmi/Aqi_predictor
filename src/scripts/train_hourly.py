@@ -6,9 +6,15 @@ import mlflow
 from optuna.integration import MLflowCallback
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 from modules.data_hourly_preprocessing import DataCleaner as clean
+from modules.logging_utils import setup_logging
 import os
 from functools import partial
 from mlflow.models.signature import infer_signature
+
+
+
+
+logger = setup_logging(__name__)
 
 
 
@@ -33,7 +39,7 @@ def clean_and_target(horizon: int= 24,
             train_df_cleaned[f"{target}_plus_{targets}h"] = (train_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
             val_df_cleaned[f"{target}_plus_{targets}h"] = (val_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
             test_df_cleaned[f"{target}_plus_{targets}h"] = (test_df_cleaned.groupby("segment_id")[f"{target}_target"].shift(-targets))
-            print("Created target column:", f"{target}_plus_{targets}h")
+            logger.info("Created target column: %s", f"{target}_plus_{targets}h")
     return train_df_cleaned, val_df_cleaned, test_df_cleaned
 
 
@@ -54,12 +60,17 @@ def split(cleaned:pd.DataFrame,
     df_test = cleaned.iloc[val_end:]
 
     #printing the data ranges and shapes
-    print("=================================")
-    print("Train start:", df_train.index.min(), "end:", df_train.index.max())
-    print("Validation start:", df_val.index.min(), "end:", df_val.index.max())
-    print("Test start:", df_test.index.min(), "end:", df_test.index.max())
-    print("Test shape:", df_test.shape, " Val shape", df_val.shape, " Test shape:", df_test.shape)
-    print("===================================\n")
+    logger.info("=================================")
+    logger.info("Train start: %s end: %s", df_train.index.min(), df_train.index.max())
+    logger.info("Validation start: %s end: %s", df_val.index.min(), df_val.index.max())
+    logger.info("Test start: %s end: %s", df_test.index.min(), df_test.index.max())
+    logger.info(
+        "Test shape: %s Val shape: %s Test shape: %s",
+        df_test.shape,
+        df_val.shape,
+        df_test.shape,
+    )
+    logger.info("===================================")
 
     return df_train, df_val, df_test
 
@@ -154,7 +165,7 @@ def tune(df_train:pd.DataFrame=None,
 
     ''' need to configure for airflow container path '''
     storage = f"{optuna_path}"
-    print(f"Optuna storage set to {storage}")
+    logger.info("Optuna storage set to %s", storage)
 
     # Allow nested runs so the callback can start a run per trial while an outer run is active
    
@@ -167,14 +178,14 @@ def tune(df_train:pd.DataFrame=None,
     obj = partial(objective, df_train=df_train, df_val=df_val,features_exclude=features_exclude,
                  target_col=target_col, value_range=value_range)
     
-    print("Starting hyperparameter tuning...")
+    logger.info("Starting hyperparameter tuning...")
     study.optimize(obj, n_trials=trials, callbacks=[callback])
 
     # save best params to json
     best_params = study.best_params
-    print("tuning complete")
-    print("Best params from tuning: ", best_params)
-    print("Best MAE from tuning: ", study.best_value)
+    logger.info("Tuning complete")
+    logger.info("Best params from tuning: %s", best_params)
+    logger.info("Best MAE from tuning: %s", study.best_value)
     
 
     return best_params
@@ -227,7 +238,13 @@ def train(horizons:int = 24,
 
         # Skip horizons with insufficient data
         if y.empty or y_val.empty:
-            print(f"Skipping horizon {h} for {target_col} due to insufficient data (train={len(y)}, val={len(y_val)})")
+            logger.warning(
+                "Skipping horizon %s for %s due to insufficient data (train=%s, val=%s)",
+                h,
+                target_col,
+                len(y),
+                len(y_val),
+            )
             continue
 
         dtrain = xgb.DMatrix(data=X, label=y, enable_categorical=True)
@@ -248,7 +265,12 @@ def train(horizons:int = 24,
         val_metrics_mae[target_key] = mean_absolute_error(y_val, reg.predict(dval))
         val_metrics_rmse[target_key] = root_mean_squared_error(y_val, reg.predict(dval))
         sign = infer_signature(X, reg.predict(dtrain))
-        print(f"Trained model for horizon {h}h with MAE: {val_metrics_mae[target_key]:.4f}, RMSE: {val_metrics_rmse[target_key]:.4f}")
+        logger.info(
+            "Trained model for horizon %sh with MAE: %.4f, RMSE: %.4f",
+            h,
+            val_metrics_mae[target_key],
+            val_metrics_rmse[target_key],
+        )
             
     return models, val_metrics_mae, val_metrics_rmse, sign
     
@@ -299,9 +321,9 @@ def main():#entry point for cli
     mlflow.set_experiment("Hourly_AQI_Experiment") #setting differnt experiment for actual training
     models, val_metrics = train(horizons=24, best_params=best_params, df_train=df_train_cleaned, df_val=df_val_cleaned)
 
-    print("Validation Metrics:", val_metrics)
+    logger.info("Validation Metrics: %s", val_metrics)
     test_metrics = test(horizons=24, models=models, df_test=df_test_cleaned)
-    print("Test Metrics:", test_metrics)
+    logger.info("Test Metrics: %s", test_metrics)
 
 
 if __name__ == "__main__":

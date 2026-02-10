@@ -7,17 +7,22 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 import os
 from scripts.ingestion_hourly import save_data, load_aqi_data
+from modules.data_hourly_preprocessing import DataCleaner 
 
 host_path = "/d/pypipeline/data" #environment variable
 OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "")
 PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH", "data/ingestion/hourly/us_paro_hourly/")
-DEFAULT_AQI_COLUMNS = ["time","o3","pm2_5","pm10"]
+DEFAULT_AQI_COLUMNS = ["date","o3","pm25"]
 
 
 def ingest():
         data = load_aqi_data(aqi_api_key=OPEN_WEATHER_API_KEY)
         save_data(data = data,
                   column=DEFAULT_AQI_COLUMNS, aqi_file_path=PRED_INGEST_PATH)
+        
+def preproces():
+        cleaner = DataCleaner()
+
 
 
 

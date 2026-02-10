@@ -5,6 +5,9 @@ from sklearn.impute import KNNImputer
 import requests
 import json
 import click
+from modules.logging_utils import setup_logging
+
+logger = setup_logging(__name__)
 
 class DataCleaner:
     def __init__(self, input_csv=None, 
@@ -39,12 +42,14 @@ class DataCleaner:
         return np.polyfit(t, arr, 1)[0]
 
     def load_raw(self):
+        logger.info("Loading raw data")
         if self.input_df is not None:
             self.df_raw = self.input_df.copy()
         elif self.input_csv is not None:
             self.df_raw = pd.read_csv(self.input_csv)
         else:
             raise ValueError("Either input_df or input_csv must be provided.")
+        logger.info("Loaded raw data with shape %s", self.df_raw.shape)
         return self.df_raw
     
     def split(self,df:pd.DataFrame, test_size: float = 0.15, val_size: float = 0.15,train_size: float = 0.7):
@@ -89,6 +94,7 @@ class DataCleaner:
         return df_merged
 
     def clean_and_index(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Cleaning and indexing data")
         df = df.copy()
         df.loc[df["pm25"] < 0, "pm25"] = pd.NA
         df.loc[df["o3"] < 0, "o3"] = pd.NA
@@ -96,7 +102,7 @@ class DataCleaner:
         df["date"] = pd.to_datetime(df["date"])
         df.set_index("date", inplace=True)
         deltas = df.index.sort_values().diff().value_counts()
-        print("Top time deltas:\n", deltas.head())
+        logger.info("Top time deltas:\n%s", deltas.head())
 
         df = df.asfreq("H")
         df["hour"] = df.index.hour
@@ -105,20 +111,25 @@ class DataCleaner:
         df["is_night"] = df["hour"].isin([0, 1, 2, 3, 4, 5]).astype(int)
         df["pm25_missing"] = df["pm25"].isna().astype(int)
         df["o3_missing"] = df["o3"].isna().astype(int)
+        logger.info("Cleaned and indexed data with shape %s", df.shape)
         return df
 
     def add_gap_length(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Computing gap length features")
         pm25_run_id = (df["pm25_missing"] != df["pm25_missing"].shift()).cumsum()
         o3_run_id = (df["o3_missing"] != df["o3_missing"].shift()).cumsum()
         df["pm25_gap_length"] = df["pm25_missing"].groupby(pm25_run_id).transform("sum")
         df["o3_gap_length"] = df["o3_missing"].groupby(o3_run_id).transform("sum")
+        logger.info("Gap length features added")
         return df
     
     def impute_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        print("NA counts before imputation:\n", df.isna().sum())
+        logger.info("Imputing missing values")
+        logger.info("NA counts before imputation:\n%s", df.isna().sum())
         df_imputation = df.copy()
         small_gap_mask_pm25 = df_imputation["pm25_gap_length"] <= self.small_gap
         small_gap_mask_o3 = df_imputation["o3_gap_length"] <= self.small_gap
+        logger.info("Applying small-gap interpolation")
         df_imputation.loc[small_gap_mask_pm25, "pm25"] = (
             df_imputation["pm25"].interpolate(method="time", limit=self.small_gap)
         )
@@ -133,6 +144,7 @@ class DataCleaner:
         (df_imputation["pm25_gap_length"] <= self.medium_gap)
         medium_gap_mask_o3 = (df_imputation["o3_gap_length"] > self.small_gap) & \
         (df_imputation["o3_gap_length"] <= self.medium_gap)
+        logger.info("Applying medium-gap KNN imputation")
         df_imputation["hour_sin"] = np.sin(2 * np.pi * df_imputation['hour'] / 24)
         df_imputation["hour_cos"] = np.cos(2 * np.pi * df_imputation['hour'] / 24)
         cols = ['pm25', 'o3', 'hour_sin', 'hour_cos']
@@ -149,11 +161,14 @@ class DataCleaner:
 
         large_gap_mask_pm25 = (df_imputation["pm25_gap_length"] > self.medium_gap) & (df_imputation["pm25_gap_length"] <= self.very_large_gap)
         large_gap_mask_o3 = (df_imputation["o3_gap_length"] > self.medium_gap) & (df_imputation["o3_gap_length"] <= self.very_large_gap)
+        logger.info("Tagging large-gap confidence")
         df_imputation.loc[large_gap_mask_pm25, "imputation_confidence"] = "low"
         df_imputation.loc[large_gap_mask_o3, "imputation_confidence"] = "low"
+        logger.info("Imputation complete")
         return df_imputation
 
     def add_segmentation(self, df_imputation: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Adding segment identifiers")
         segment = (
             (df_imputation['pm25_missing'].shift(fill_value=0) == 1) & (df_imputation['pm25_gap_length'].shift(fill_value=0) > self.very_large_gap)
         ) | (
@@ -162,15 +177,19 @@ class DataCleaner:
         df_imputation["segment_id"] = segment.cumsum()
         df_imputation["pm25_missing"] = df_imputation["pm25"].isna().astype(int)
         df_imputation["o3_missing"] = df_imputation["o3"].isna().astype(int)
+        logger.info("Segmentation complete")
         return df_imputation
 
     def engineer_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("Engineering features")
         df_engineering = df.copy()
         lags = [i for i in range(1, 25)]
+        logger.info("Adding lag features")
         for lag in lags:
             df_engineering[f"pm25_lag_{lag}"] = df_engineering.groupby("segment_id")["pm25"].shift(lag)
             df_engineering[f"o3_lag_{lag}"] = df_engineering.groupby("segment_id")["o3"].shift(lag)
         windows = [3, 6, 12, 24]
+        logger.info("Adding rolling window features")
         for w in windows:
             df_engineering[f'pm25_roll_{w}'] = (
                 df_engineering.groupby('segment_id')['pm25']
@@ -182,6 +201,7 @@ class DataCleaner:
                 .apply(lambda s: s.shift(1).rolling(window=w, min_periods=1).mean())
                 .reset_index(level=0, drop=True)
             )
+        logger.info("Adding slope and ratio features")
         df_engineering["pm25_slope_3h"] = (
             df_engineering.groupby("segment_id")["pm25"].rolling(window=3, min_periods=3).apply(self.trend_3, raw=True).reset_index(level=0, drop=True)
         )
@@ -196,17 +216,19 @@ class DataCleaner:
         )
         df_engineering["pm25_o3_ratio"] = df_engineering.groupby("segment_id").apply(lambda g: g["pm25"] / g["o3"]).reset_index(level=0, drop=True)
         df_engineering["pm25_o3_ratio"].replace([np.inf, -np.inf], np.nan, inplace=True)
+        logger.info("Feature engineering complete with shape %s", df_engineering.shape)
         return df_engineering
 
     def save_processed(self, df: pd.DataFrame):
         os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
         df.to_csv(self.output_csv)
-        print(f"Saved processed file to: {self.output_csv}")
+        logger.info("Saved processed file to: %s", self.output_csv)
 
     def run(self):
+        logger.info("Starting full cleaning pipeline")
         self.load_raw()
         neg_count = self.df_raw[self.df_raw["value"] < 0]["value"].count()
-        print(f"Negative value count: {neg_count}")
+        logger.info("Negative value count: %s", neg_count)
         self.df_merged = self.extract_pm_o3(self.df_raw)
         self.df_clean = self.clean_and_index(self.df_merged)
         self.df_clean = self.add_gap_length(self.df_clean)
@@ -216,9 +238,11 @@ class DataCleaner:
         self.df_features = self.engineer_features(self.df_segmented)
         if self.output_csv:
             self.save_processed(self.df_features)
+        logger.info("Full cleaning pipeline complete")
             
     def run_clean(self,df_raw:pd.DataFrame)->pd.DataFrame:
         ''' Runs full cleaning pipeline from raw dataframe input '''
+        logger.info("Starting clean-only pipeline")
         if df_raw is None:
             df_raw = self.input_df #defaults to attribute input_df if no argument provided
 
@@ -227,15 +251,18 @@ class DataCleaner:
         self.df_clean = self.clean_and_index(self.df_merged)
         if self.output_csv:
             self.save_processed(self.df_clean)
+        logger.info("Clean-only pipeline complete")
         return self.df_clean
         
     def run_feature_engineering(self, cleaned_df: pd.DataFrame)->pd.DataFrame:
         """Assumes cleaned_df already has pm25/o3 columns and datetime index."""
+        logger.info("Starting feature engineering pipeline")
         self.df_clean = self.add_gap_length(cleaned_df)
         self.df_imputed = self.impute_values(self.df_clean)
         self.df_segmented = self.add_segmentation(self.df_imputed)
         self.df_features = self.engineer_features(self.df_segmented)
         if self.output_csv:
             self.save_processed(self.df_features)
+        logger.info("Feature engineering pipeline complete")
         return self.df_features
 

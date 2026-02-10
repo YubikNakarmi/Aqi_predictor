@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from scripts.train_hourly import split,clean_and_target
 from modules.data_hourly_preprocessing import DataCleaner as clean
+from modules.logging_utils import setup_logging
 import datetime
 import yaml
 import json
@@ -16,12 +17,14 @@ TEST_SPLIT= float(os.environ.get("TEST_SPLIT", 0.15))
 # Target columns to create - comma separated, e.g., "pm25,o3" or "pm25" for single target
 TARGET_COLS = os.environ.get("TARGET_COLS", "pm25,o3").split(",")
 
+logger = setup_logging(__name__)
+
 def sanity_path_check():
     if not os.path.exists(DATA_RAW_PATH):
         raise FileNotFoundError(f"Raw data file not found at {DATA_RAW_PATH}")
     if not os.path.exists(DATA_PROCESSED_PATH):
         os.makedirs(DATA_PROCESSED_PATH)
-        print(f"Created processed data directory at {DATA_PROCESSED_PATH}")
+        logger.info("Created processed data directory at %s", DATA_PROCESSED_PATH)
 
 
 def metadata(dvc_file_path)->dict:
@@ -49,7 +52,7 @@ def main():
     sanity_path_check()
     
     df = pd.read_csv(DATA_RAW_PATH)
-    print(f"Raw data loaded from {DATA_RAW_PATH} with shape {df.shape}")
+    logger.info("Raw data loaded from %s with shape %s", DATA_RAW_PATH, df.shape)
     main_df_cleaned = clean().run_clean(df) # celeans and extracts datetime features
 
     # Split the data based on env ratios
@@ -69,7 +72,7 @@ def main():
     train_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'train_processed.parquet'))
     val_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'val_processed.parquet'))
     test_cleaned.to_parquet(os.path.join(DATA_PROCESSED_PATH, 'test_processed.parquet'))
-    print(f"Processed data saved to {DATA_PROCESSED_PATH}")
+    logger.info("Processed data saved to %s", DATA_PROCESSED_PATH)
 
     metadata1 = metadata(dvc_file_path="data.dvc")
     with open(os.path.join(DATA_PROCESSED_PATH, 'metadata.json'), 'w') as f:

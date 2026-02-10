@@ -3,6 +3,7 @@ import json
 from scripts.train_hourly import train
 import pandas as pd
 import mlflow
+from modules.logging_utils import setup_logging
 
 DATA_PROCESSED_DIR = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_PATH", r"data/predictions/hourly/us_paro_hourly/test/")
@@ -13,6 +14,8 @@ TARGET_COL = os.getenv("TARGET_COL", "pm25")  # Default to pm25, can be "o3" or 
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 
+logger = setup_logging(__name__)
+
 
 def mlflow_sanity_check()->bool:
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -20,7 +23,7 @@ def mlflow_sanity_check()->bool:
         mlflow.set_experiment("sanity_check")
         with mlflow.start_run(run_name="sanity_check_run"):
             mlflow.log_param("sanity_check", "passed")
-        print(f"MLflow tracking URI set to {MLFLOW_TRACKING_URI}")
+        logger.info("MLflow tracking URI set to %s", MLFLOW_TRACKING_URI)
         return True
     except Exception as e:
         raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
@@ -30,11 +33,11 @@ def main():
         return
     train_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/train_processed.parquet")
     val_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/val_processed.parquet")
-    print("Test data loaded\n")
+    logger.info("Test data loaded")
 
     with open(f"{ARTIFACTS_PATH}/best_params.json", "r") as f:
         best_params = json.load(f)
-    print("Best hyperparameters loaded\n") #getting best params
+    logger.info("Best hyperparameters loaded")
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI) #set mlflow tracking uri to server
     # mlflow.set_experiment(f"xgb_{TARGET_COL}_hourly_training")    
@@ -70,10 +73,10 @@ def main():
 
             if val_rmse is not None:
                 mlflow.log_metric(f"val_rmse_{key}", val_rmse) #log metrics of each model
-                print(f"Horizon {key}: Val RMSE = {val_rmse}")
+                logger.info("Horizon %s: Val RMSE = %s", key, val_rmse)
             if val_mae is not None:
                 mlflow.log_metric(f"val_mae_{key}", val_mae) #log metrics of each model
-                print(f"Horizon {key}: Val MAE = {val_mae}")
+                logger.info("Horizon %s: Val MAE = %s", key, val_mae)
 
             mlflow.xgboost.log_model(
                 xgb_model=model,
@@ -83,10 +86,10 @@ def main():
                 params=best_params,
                 input_example=train_df.drop(columns=features_exclude).iloc[:5]
             )
-            print(f"Registered {key} model successrully")
+            logger.info("Registered %s model successfully", key)
         mlflow.end_run()
 
-    print("Training complete and models logged to MLflow.")
+    logger.info("Training complete and models logged to MLflow.")
 if __name__ == "__main__":
     main()        
 
