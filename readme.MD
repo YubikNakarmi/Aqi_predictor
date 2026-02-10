@@ -15,7 +15,12 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
     - [DVC setup](#dvc-setup)
   - [Run](#run)
   - [MLflow](#mlflow)
-  - [Training](#training)
+  - [Training Pipeline](#training-pipeline)
+    - [Preprocessing](#preprocessing)
+    - [Tuning](#tuning)
+    - [Training](#training)
+    - [Evaluation](#evaluation)
+    - [Serving](#serving)
   - [Development (editable install)](#development-editable-install)
   - [Notebooks](#notebooks)
   - [Secrets](#secrets)
@@ -116,7 +121,7 @@ MLflow stores:
 - Optuna tuning results
 - Models registered per horizon
 
-## Training
+## Training Pipeline
 
 Hourly training runs per horizon (1-24) with separate models and tuning. Pipeline scripts live under `hourly_train_pipeline/`.
 
@@ -128,6 +133,31 @@ export VALUE_MIN=0
 export VALUE_MAX=500
 export HORIZON=24
 ```
+should be set on `.env` file
+
+### Preprocessing
+`.preprocess.py` reads raw CSVs, applies transformations, and writes processed parquet on `/data/processed/..`.
+This utilizes local libraries under `src/` for data cleaning and feature engineering, more on dependancy graph. The key preprocessing steps include:
+- Handling missing values (imputation or dropping)
+- segmentation by missing values to avoid leakage
+- outlier detection and capping
+- Feature engineering (lag features, rolling stats, time-based features)
+more on detail on  `/notebooks/preprocessing.ipynb`
+
+### Tuning
+`.tune.py` runs Optuna to find the best hyperparameters for the XGBoost model per horizon. Results are logged to MLflow. This utilizes the Optuna integration with MLflow to track tuning experiments. `/src/train_houly.py` contains the training logic and is called by both tuning and training scripts, while `tune` is the wrapper. The best hyperparameters are saved to a JSON file under `data/artifacts/` for use in the training step.
+
+### Training
+`.train.py` trains the final model using the best hyperparameters found in tuning. The trained model is logged to MLflow and saved as a pickle file under `data/artifacts/`. After training the model is registered in MLflow Model Registry under a name like `aqi_model_horizon_{HORIZON}`.
+
+### Evaluation
+`.eval.py` evaluates the trained model on a holdout test set and logs metrics to MLflow. Evaluation results are also saved as JSON under `data/artifacts/` and predictoin on `data/predictions`. The mlflow is modeled to log the evaluation metrics under the same run as training, so you can see the full picture of training and evaluation in one place. The follwoing are the requirements for promotion:
+- MAE < 20
+- RMESE <30
+
+### Serving
+`serve.py` serves the selected model using MLflow's built-in model serving capabilities. The model is loaded from MLflow Model Registry and exposed via a REST API endpoint. This utilize custom pyfunc model that combines all the 24 horizon models into one endpoint, where you can specify the horizon as a query parameter.
+
 
 Example runs:
 ```bash
