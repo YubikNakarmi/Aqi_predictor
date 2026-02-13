@@ -14,6 +14,5 @@ COPY pyproject.toml setup.cfg ./
 RUN pip install --no-cache-dir -e .
 
 COPY ./hourly_pred_pipeline ./hourly_pred_pipeline
-COPY data/ ./data/
 
 ENV PYTHONUNBUFFERED=1

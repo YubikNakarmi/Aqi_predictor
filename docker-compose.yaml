@@ -207,7 +207,6 @@ services:
       - .env
     volumes:
       - ./data:/data
-      - ./models:/models
       - optuna-db:/optuna/db
     environment:
       - OPTUNA_PATH=sqlite:////optuna/db/optuna.db
@@ -222,6 +221,25 @@ services:
       - manual
     mem_limit: 3g
     memswap_limit: 3g
+  
+  prediction:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prediction
+    image: aqi-prediction:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
 
   airflow-apiserver:
     <<: *airflow-common

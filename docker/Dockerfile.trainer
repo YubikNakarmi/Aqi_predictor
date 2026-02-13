@@ -20,9 +20,8 @@ COPY src/ ./src/
 COPY pyproject.toml setup.cfg ./
 RUN pip install --no-cache-dir -e .
 
-COPY data/ ./data/
+# Data is mounted via docker-compose volume at /data (not copied here)
 COPY hourly_train_pipeline/ ./hourly_train_pipeline/
-COPY data.dvc ./data.dvc
 
 
 ENV PYTHONUNBUFFERED=1

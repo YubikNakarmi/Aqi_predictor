@@ -32,4 +32,9 @@ def pred():
     mlflow.set_experiment("xgb_aqi_hourly_prediction")
     model = mlflow.pyfunc.load_model("models:/hourly_pm25_24h_service/latest")
     data = pd.read_parquet(PRED_PROCESSED_PATH+"pred_processed.parquet")
+    logger.info("Data preview:\n%s", data.head())
+    
+    expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]
+    logger.info("Expected columns for prediction: %s", expected_cols)
+    prediction = model.predict(data.iloc[[1]][expected_cols])
 

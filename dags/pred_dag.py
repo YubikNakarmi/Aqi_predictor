@@ -23,8 +23,6 @@ COLUMNS = ["date","o3","pm25","pm10"]
 
 logger = setup_logging(__name__)
 
-
-
 def ingest():
     data = ingestion_hourly.load_aqi_data(
         aqi_api_key= key,
@@ -38,23 +36,41 @@ def ingest():
         columns=COLUMNS
 )
 
+mount = Mount(source=host_path, target='/data', type='bind')
+environment_vars = {
+    'OPEN_WEATHER_API_KEY': OPEN_WEATHER_API_KEY,
+    }
 
-
-
-with DAG(dag_id="aqi_data_dag",
-         start_date=datetime(2025, 8, 1),
-         schedule='@daily',
-         catchup=False,
+with DAG(dag_id="aqi_data_dag", start_date=datetime(2025, 8, 1),schedule='@daily',catchup=False,
          ) as dag:
-            fetch_data = PythonOperator(
-                task_id='fetch_and_load',
-                python_callable = ingest
-                # container env key
-            )
-
             
 
-            
+        fetch_data = PythonOperator(
+        task_id='fetch_and_load',
+        python_callable = ingest
+        # container env key
+        )
 
+        preprocess_data = DockerOperator(
+        task_id='preprocess_data',
+        image='aqi-preprocessing:latest',
+                api_version='auto',
+        auto_remove='success',
+        docker_url='unix://var/run/docker.sock',
+        network_mode='pypipeline_aqi_network',
+        command='python hourly_pred_pipeline/preprocess.py',
+        mounts=mount,
+        environment = environment_vars
+        )
 
-
+        predict = DockerOperator(
+        task_id='predict',
+        image='aqi-predict:latest',
+                api_version='auto',
+        auto_remove='success',
+        docker_url='unix://var/run/docker.sock',
+        network_mode='pypipeline_aqi_network',
+        command='python hourly_pred_pipeline/predict.py',
+        mounts=mount,
+        environment = environment_vars
+        )
