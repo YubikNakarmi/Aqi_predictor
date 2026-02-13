@@ -24,7 +24,22 @@ class ServeModel(mlflow.pyfunc.PythonModel):
 
         return pd.DataFrame(preds)
     
+def mlflow_sanity_check()->bool:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    try:
+        mlflow.set_experiment("sanity_check")
+        with mlflow.start_run(run_name="sanity_check_run"):
+            mlflow.log_param("sanity_check", "passed")
+        logger.info("MLflow tracking URI set to %s", MLFLOW_TRACKING_URI)
+        return True
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
+ 
 def main():
+
+    if mlflow_sanity_check() is False:
+        return
+    
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_serving")
 

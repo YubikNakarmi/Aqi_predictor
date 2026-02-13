@@ -1,4 +1,5 @@
 import pandas as pd
+import datetime
 from train import HORIZON, TARGET_COL
 import mlflow
 import os 
@@ -6,6 +7,7 @@ from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
 from modules.logging_utils import setup_logging
 import xgboost as xgb
+import json
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -19,8 +21,30 @@ logger = setup_logging(__name__)
 
 
 
+def mlflow_sanity_check()->bool:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    try:
+        mlflow.set_experiment("sanity_check")
+        with mlflow.start_run(run_name="sanity_check_run"):
+            mlflow.log_param("sanity_check", "passed")
+        logger.info("MLflow tracking URI set to %s", MLFLOW_TRACKING_URI)
+        return True
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
+
+def columns_metadata(columns:list)->dict:
+
+    data ={
+        "columns": columns,
+        "date": str(datetime.datetime.now())
+    }
+    return data
+
 
 def main():
+
+    if mlflow_sanity_check() is False:
+        return
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     
@@ -145,6 +169,10 @@ def main():
                 continue
 
             logger.info("Mean absolute error: %s", result.metrics["mean_absolute_error"])
+
+        mlflow.log_artifact(X.columns.to_list(), artifact_path="features")
+        mlflow.log_artifact(y.name, artifact_path="target")
+
         mlflow.end_run()
 
     if horizon_predictions:
@@ -157,6 +185,11 @@ def main():
         preds_df.sort_values("date", inplace=True)
     else:
         preds_df = pd.DataFrame()
+
+    features = X.columns.tolist()
+  
+
+    
 
     predictions_out_dir = os.path.join(PREDICTIONS_DIR, "test")
     os.makedirs(predictions_out_dir, exist_ok=True)

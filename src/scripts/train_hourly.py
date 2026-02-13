@@ -160,8 +160,7 @@ def tune(df_train:pd.DataFrame=None,
                         ["segment_id","imputation_confidence"])->dict:
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
-
-    ''' need to configure for airflow container path '''
+    logger.info("====================Starting Hyperparameter Tuning=================")
     storage = f"{optuna_path}"
     logger.info("Optuna storage set to %s", storage)
 
@@ -200,7 +199,7 @@ def train(horizons:int = 24,
          target_col:str="pm25", 
          value_range:tuple=(0,500)):
     #training all models for 24 horizons using best params
- 
+    logger.info("====================Starting Model Training=================")
     if best_params is None:
         best_params = tune(df_train=df_train, df_val=df_val, target_col=target_col, 
                           value_range=value_range, horizons=horizons)
