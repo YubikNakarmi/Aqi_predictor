@@ -127,6 +127,8 @@ class DataCleaner:
         df["day_of_week"] = df.index.dayofweek
         df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
         df["is_night"] = df["hour"].isin([0, 1, 2, 3, 4, 5]).astype(int)
+        df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+        df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
         return df
 
     def add_missing_flags(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -180,8 +182,6 @@ class DataCleaner:
         medium_gap_mask_o3 = (df_imputation["o3_gap_length"] > self.small_gap) & \
         (df_imputation["o3_gap_length"] <= self.medium_gap)
         logger.info("Applying medium-gap KNN imputation")
-        df_imputation["hour_sin"] = np.sin(2 * np.pi * df_imputation["hour"] / 24)
-        df_imputation["hour_cos"] = np.cos(2 * np.pi * df_imputation["hour"] / 24)
         cols = ['pm25', 'o3', 'hour_sin', 'hour_cos']
         imp = KNNImputer(n_neighbors=6)
 

@@ -15,9 +15,9 @@ logger = setup_logging(__name__)
 class ServeModel(mlflow.pyfunc.PythonModel):
     
     def load_context(self,context):
-        self.models = {h:mlflow.pyfunc.load_model(f"models:/{TARGET_COL}_plus_{h}h/latest") for h in range(1, 25)}
+        self.models = {h:mlflow.pyfunc.load_model(f"models:/{TARGET_COL}_plus_{h}h_model/latest") for h in range(1, 25)}
 
-    def predict(self ,model_input,context):
+    def predict(self, context, model_input):
         preds = {}
         for h, model in self.models.items():
             preds[f"{TARGET_COL}_plus_{h}h_pred"] = model.predict(model_input)
