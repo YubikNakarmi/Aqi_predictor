@@ -7,7 +7,7 @@ import pandas as pd
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/data/processed/hourly/us_paro_hourly/")
-DATA_PREDICTED_PATH = os.environ.get("DATA_PREDICTED_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
+PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
 
 logger = logging_utils.setup_logging(__name__)
 
@@ -40,5 +40,5 @@ def pred():
         prediction = model.predict(data.iloc[[1]][expected_cols])
         pred_df = pd.DataFrame(prediction)
         logger.info("Prediction result:\n%s", pred_df)
-        pred_df.to_csv(DATA_PREDICTED_PATH+"/predicted_pm25.csv", index=False)
-        logger.info("Prediction saved to %s/predicted_pm25.csv", DATA_PREDICTED_PATH)
+        pred_df.to_csv(PRED_OUTPUT_PATH+"/predicted_pm25.csv", index=False)
+        logger.info("Prediction saved to %s/predicted_pm25.csv", PRED_OUTPUT_PATH)
