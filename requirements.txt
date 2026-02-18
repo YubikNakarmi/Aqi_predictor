@@ -4,7 +4,7 @@ docker==7.1.0
 mlflow==3.5.0
 mlflow-skinny==3.5.0
 mlflow-tracing==3.5.0
-numpy==2.3.2
+numpy
 optuna==4.6.0
 optuna-integration==4.6.0
 pandas==2.3.1
