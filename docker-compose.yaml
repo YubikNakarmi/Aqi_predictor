@@ -135,8 +135,14 @@ services:
   optuna-server:
     image: python:3.9-slim
     container_name: optuna-server
+    ports:
+      - "8081:8081"
+    volumes:
+      - optuna-db:/optuna/db
+    command: sh -c "pip install optuna && optuna-dashboard &&
+      optuna-dashboard sqlite:///optuna/db/optuna.db --host 0.0.0.0 --port 8081"
 
-  
+
   # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
   mlflow:
     build:
@@ -154,7 +160,7 @@ services:
       - --backend-store-uri
       - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
       - --default-artifact-root
-      - wasbs://mlflow@yubikaqidata.blob.core.windows.net/ #azure blob storage
+      - ${MLFLOW_ARTIFACT_ROOT} #azure blob storage
       - --host
       - 0.0.0.0
       - --allowed-hosts

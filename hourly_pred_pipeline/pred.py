@@ -6,8 +6,8 @@ import pandas as pd
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/pypipeline/data/processed/hourly/us_paro_hourly/")
-
+PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/data/processed/hourly/us_paro_hourly/")
+DATA_PREDICTED_PATH = os.environ.get("DATA_PREDICTED_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
 
 logger = logging_utils.setup_logging(__name__)
 
@@ -30,11 +30,15 @@ def pred():
         return
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_prediction")
-    model = mlflow.pyfunc.load_model("models:/hourly_pm25_24h_service/latest")
-    data = pd.read_parquet(PRED_PROCESSED_PATH+"pred_processed.parquet")
-    logger.info("Data preview:\n%s", data.head())
-    
-    expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]
-    logger.info("Expected columns for prediction: %s", expected_cols)
-    prediction = model.predict(data.iloc[[1]][expected_cols])
-
+    with mlflow.start_run(run_name="hourly_prediction_run"):
+        model = mlflow.pyfunc.load_model("models:/hourly_pm25_24h_service/latest")
+        data = pd.read_parquet(PRED_PROCESSED_PATH+"pred_processed.parquet")
+        logger.info("Data preview:\n%s", data.head())
+        
+        expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]
+        logger.info("Expected columns for prediction: %s", expected_cols)
+        prediction = model.predict(data.iloc[[1]][expected_cols])
+        pred_df = pd.DataFrame(prediction)
+        logger.info("Prediction result:\n%s", pred_df)
+        pred_df.to_csv(DATA_PREDICTED_PATH+"/predicted_pm25.csv", index=False)
+        logger.info("Prediction saved to %s/predicted_pm25.csv", DATA_PREDICTED_PATH)

@@ -11,3 +11,4 @@ __pycache__/
 cmds.sh
 /hourly_pipeline/USAGE_EXAMPLES.md
 *.egg-info/
+sample.md
