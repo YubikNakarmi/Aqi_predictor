@@ -231,7 +231,7 @@ services:
   prediction:
     build:
       context: .
-      dockerfile: docker/Dockerfile.prediction
+      dockerfile: docker/Dockerfile.pred
     image: aqi-prediction:latest
     env_file:
       - .env

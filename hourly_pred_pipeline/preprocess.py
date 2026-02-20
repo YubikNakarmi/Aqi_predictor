@@ -16,7 +16,7 @@ PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/pypipeline/data/pr
 
 def preprocess():
 
-    df = pd.read_csv(PRED_INGEST_PATH+"/us_paro_hourly_ingest.csv")
+    df = pd.read_csv(PRED_INGEST_PATH+r"us_paro_hourly_ingest.csv")
 
     clean = DataCleaner()
     df["date"] = pd.to_datetime(df["date"])
@@ -24,7 +24,7 @@ def preprocess():
     df.drop(columns=["pm10"], inplace=True)
     df_1 = clean.add_time_features(df)
     df_2 = clean.add_missing_flags(df_1)
-    df_2["was_imputed"]=0
+    df_2["was_imputed"] = 0
     df_3 = clean.add_gap_length(df_2)
     df_3 = clean.add_segmentation(df_3)
 

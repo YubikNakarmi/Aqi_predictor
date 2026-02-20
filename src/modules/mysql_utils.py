@@ -27,8 +27,8 @@ class MySQLUtils:
         connection = self.connect_to_mysql(self.mysql_uri)
         try:
             with connection.cursor() as cursor:
-                # Create table with columns from rows list
-                columns = ', '.join([f"{col} VARCHAR(255)" for col in rows])
+                # Create table with list columns
+                columns = ', '.join([f"{col} VARCHAR(255)" for col in rows]) #concat string with commas
                 sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns})"
                 cursor.execute(sql)
             connection.commit()
@@ -45,7 +45,7 @@ class MySQLUtils:
         try:
             with connection.cursor() as cursor:
                 for _, row in df.iterrows():
-                    placeholders = ', '.join(['%s'] * len(row))
+                    placeholders = ', '.join(['%s'] * len(row))#concat with number of rows
                     sql = f"INSERT INTO {table_name} ({', '.join(df.columns)}) VALUES ({placeholders})"
                     cursor.execute(sql, tuple(row))
             connection.commit()
