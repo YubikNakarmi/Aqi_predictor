@@ -9,8 +9,8 @@ logger = setup_logging(__name__)
 key = os.environ.get("OPEN_WEATHER_API_KEY", "")
 
 COLUMNS = ["date","o3","pm25","pm10"]
-PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH", "/pypipeline/data/raw/pred_ingestion/us_paro")
-PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/pypipeline/data/processed/hourly/us_paro_hourly/")
+PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH", "data/raw/pred_ingestion/us_paro/")
+PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "data/processed/hourly/us_paro_hourly/")
 
 
 

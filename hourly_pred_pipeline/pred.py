@@ -6,8 +6,8 @@ from modules.mysql_utils import MySQLUtils
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/data/processed/hourly/us_paro_hourly/")
-PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
+PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "data/processed/hourly/us_paro_hourly/")
+PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "data/predictions/hourly/us_paro_hourly/prod")
 PRED_MYSQLURI = os.environ.get("PRED_MYSQLURI", "")
 
 logger = logging_utils.setup_logging(__name__)
@@ -29,8 +29,13 @@ def pred():
 
     if not mlflow_sanity_check():
         return
+    
+    mysql_utils = MySQLUtils(PRED_MYSQLURI)
+
+
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_prediction")
+
     with mlflow.start_run(run_name="hourly_prediction_run"):
         model = mlflow.pyfunc.load_model("models:/hourly_pm25_24h_service/latest")
         data = pd.read_parquet(PRED_PROCESSED_PATH+"pred_processed.parquet")
@@ -46,7 +51,8 @@ def pred():
         logger.info("Prediction saved to %s/predicted_pm25.csv", PRED_OUTPUT_PATH)
 
         if PRED_MYSQLURI:
-            mysql_utils = MySQLUtils(PRED_MYSQLURI)
-            mysql_utils.create_table(pred_df.columns.tolist(), "hourly_predictions")
-            mysql_utils.write_dataframe_to_mysql(pred_df, "hourly_predictions")
-            logger.info("Prediction written to MySQL database at %s", PRED_MYSQLURI)
+           mysql_utils.write_dataframe_to_mysql(pred_df, table_name="hourly_predictions", if_exists="append")
+           logger.info("Prediction written to MySQL table hourly_predictions")
+
+if __name__ == "__main__":
+    pred()
