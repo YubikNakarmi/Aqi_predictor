@@ -4,7 +4,7 @@ docker==7.1.0
 mlflow==3.5.0
 mlflow-skinny==3.5.0
 mlflow-tracing==3.5.0
-numpy==2.3.2
+numpy
 optuna==4.6.0
 optuna-integration==4.6.0
 pandas==2.3.1
@@ -15,6 +15,6 @@ azure-storage-blob==12.26.0
 dvc==3.63.0
 dvc-azure==3.1.0
 pymysql==1.1.0
-shap==0.50.0
+shap
 pytest==8.4.1
 
