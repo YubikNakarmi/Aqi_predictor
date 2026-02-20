@@ -3,8 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.impute import KNNImputer
 import requests
-import json
-import click
+
 from modules.logging_utils import setup_logging
 
 logger = setup_logging(__name__)

@@ -1,5 +1,4 @@
 import pandas as pd
-import xgboost as xgb
 import mlflow
 import os
 from scripts.train_hourly import tune

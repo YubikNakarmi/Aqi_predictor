@@ -1,7 +1,5 @@
 import pandas as pd
-import requests
 import os
-import json
 from modules.data_hourly_preprocessing import DataCleaner
 from scripts import ingestion_hourly
 from modules.logging_utils import setup_logging

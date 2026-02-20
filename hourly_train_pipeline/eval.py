@@ -7,7 +7,6 @@ from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
 from modules.logging_utils import setup_logging
 import xgboost as xgb
-import json
 
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")

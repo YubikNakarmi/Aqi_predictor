@@ -1,5 +1,4 @@
 import mlflow
-import xgboost as xgb
 from modules import logging_utils
 import os
 import pandas as pd
@@ -8,6 +7,7 @@ import pandas as pd
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/data/processed/hourly/us_paro_hourly/")
 PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
+PERD_OUTPUT_MYSQLURI = os.environ.get("PERD_OUTPUT_MYSQLURI", "")
 
 logger = logging_utils.setup_logging(__name__)
 
@@ -30,6 +30,7 @@ def pred():
         return
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment("xgb_aqi_hourly_prediction")
+
     with mlflow.start_run(run_name="hourly_prediction_run"):
         model = mlflow.pyfunc.load_model("models:/hourly_pm25_24h_service/latest")
         data = pd.read_parquet(PRED_PROCESSED_PATH+"pred_processed.parquet")
