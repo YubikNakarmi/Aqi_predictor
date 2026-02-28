@@ -170,7 +170,7 @@ services:
       - mlflow
       - server
       - --backend-store-uri
-      - ${MYSQLURL_REMOTE} #local mysql, host.docker.internal to specifiy machine host
+      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
       - --default-artifact-root
       - ${MLFLOW_ARTIFACT_ROOT} #azure blob storage
       - --host
