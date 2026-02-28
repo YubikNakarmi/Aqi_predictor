@@ -57,7 +57,9 @@ def pred():
         logger.info("Expected columns for prediction: %s", expected_cols)
         prediction = model.predict(data.iloc[[1]][expected_cols])#filter using expected columns 
 
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pred_df = pd.DataFrame(prediction)
+        pred_df["timestamp"] = now
         logger.info("Prediction result:\n%s", pred_df)
         pred_df.to_csv(PRED_OUTPUT_PATH+r"/"+datetime.datetime.now().strftime("%Y-%m-%d")+".csv", index=False)
         logger.info("Prediction saved to %s/%s.csv", PRED_OUTPUT_PATH, datetime.datetime.now().strftime("%Y-%m-%d"))

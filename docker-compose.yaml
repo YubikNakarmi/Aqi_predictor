@@ -148,6 +148,11 @@ services:
       - aqi_network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://0.0.0.0:8081/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 1g
 
 
   # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
@@ -165,7 +170,7 @@ services:
       - mlflow
       - server
       - --backend-store-uri
-      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
+      - ${MYSQLURL_REMOTE} #local mysql, host.docker.internal to specifiy machine host
       - --default-artifact-root
       - ${MLFLOW_ARTIFACT_ROOT} #azure blob storage
       - --host
@@ -178,12 +183,13 @@ services:
       - aqi_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    mem_limit: 1g
-    memswap_limit: 1g
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 2g
+    memswap_limit: 2g
 
   model-serve:
     build:

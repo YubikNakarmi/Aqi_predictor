@@ -114,7 +114,7 @@ docker compose up mlflow
 
 ## MLflow
 
-The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000.
+The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000. You can set up mlflow locally for development with a local SQLite backend by changing the `MLFLOW_ARTIFACT_ROOT` to local path and `MYSQLURI` to a .SQLITE db locally in `.env` and running the mlflow server locally.
 
 MLflow stores:
 - Parameters and metrics for each training run

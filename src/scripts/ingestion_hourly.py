@@ -99,6 +99,8 @@ def load_aqi_data(
     lookback_hours: int | None = None,
     lookback_days: int = 4,
 ) -> pd.DataFrame:
+
+
     now = dt.datetime.now()
     if lookback_hours is not None:
         past = now - dt.timedelta(hours=lookback_hours)

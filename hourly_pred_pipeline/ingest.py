@@ -8,7 +8,7 @@ logger = setup_logging(__name__)
 key = os.environ.get("OPEN_WEATHER_API_KEY", "")
 COLUMNS = ["date","o3","pm25","pm10"]
 PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH", "data/raw/pred_ingestion/us_paro")
-INGEST_LOOKBACK_HOURS = os.environ.get("INGEST_LOOKBACK_HOURS", 24)
+INGEST_LOOKBACK_HOURS = int(os.environ.get("INGEST_LOOKBACK_HOURS", 24))
 
 
 
