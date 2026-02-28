@@ -1,6 +1,6 @@
 /data
 /.venv
-/.vscode
+.vscode
 .env 
 CHANGES.md
 __pycache__/
