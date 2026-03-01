@@ -24,11 +24,16 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
   - [Project layout](#project-layout)
   - [Airflow DAGs](#airflow-dags)
   - [Stack](#stack)
-  - [Port Rules](#port-rules)
   - [Setup](#setup)
-    - [Environment configuration](#environment-configuration)
-    - [DVC setup](#dvc-setup)
-  - [Run](#run)
+    - [Prerequisites](#prerequisites)
+    - [1. Clone and create virtual environment](#1-clone-and-create-virtual-environment)
+    - [2. Install dependencies](#2-install-dependencies)
+    - [3. Create data directory structure](#3-create-data-directory-structure)
+    - [4. Environment configuration](#4-environment-configuration)
+    - [5. MySQL setup](#5-mysql-setup)
+    - [6. DVC setup](#6-dvc-setup)
+    - [7. Build and run with Docker Compose](#7-build-and-run-with-docker-compose)
+  - [Port Rules](#port-rules)
   - [MLflow](#mlflow)
   - [Training Pipeline](#training-pipeline)
     - [Preprocessing](#preprocessing)
@@ -78,34 +83,102 @@ This repo runs an end-to-end AQI pipeline that:
 - Optuna for hyperparameter tuning
 - XGBoost for model training
 
-## Port Rules
-
-| Port | Service              | Description                              |
-|------|----------------------|------------------------------------------|
-| 5000 | MLflow Tracking      | MLflow tracking server UI and API        |
-| 5050 | MLflow Model Serving | MLflow model serving REST endpoint       |
-| 8080 | Airflow API Server   | Airflow web UI and REST API              |
-| 8081 | Optuna Dashboard     | Optuna hyperparameter tuning dashboard   |
-
-> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **8080** (Airflow), **8081** (Optuna), and **5050** (Model Serving) in your security group.
-
 ## Setup
 
-### Environment configuration
+### Prerequisites
 
-Required in `.env` (example names):
-- `OPEN_WEATHER_API_KEY`
-- `AZURE_STORAGE_CONNECTION_STRING`
-- `MYSQLURL`
-- `MLFLOW_TRACKING_URI`
+| Requirement        | Version   | Purpose                          |
+|--------------------|-----------|----------------------------------|
+| Python             | 3.10+     | Runtime                          |
+| Docker & Compose   | Latest    | Container orchestration          |
+| MySQL              | 8.x       | MLflow backend store             |
+| Git                | Latest    | Version control                  |
+| DVC                | 3.x       | Data versioning (Azure Blob)     |
 
-Local MySQL on host (Windows/Mac):
-```dotenv
-MYSQL_HOST=host.docker.internal
-MYSQLURL=mysql+pymysql://root:your_password@host.docker.internal:3306/mlflow_backend
+### 1. Clone and create virtual environment
+
+```bash
+git clone https://github.com/YubikNakarmi/Aqi_predictor.git
+cd Aqi_predictor
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# Linux / macOS
+source .venv/bin/activate
 ```
 
-### DVC setup
+### 2. Install dependencies
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Editable install for local src/ modules
+pip install -e .
+```
+
+### 3. Create data directory structure
+
+```bash
+python setup_data_structure.py
+```
+
+This creates the required directory tree:
+```
+data/
+├── artifacts/
+├── plots/
+│   ├── daily/
+│   └── hourly/
+├── predictions/
+│   ├── daily/
+│   └── hourly/
+├── processed/
+│   ├── daily/
+│   └── hourly/
+└── raw/
+    ├── dynamic/
+    └── static/
+        ├── daily/
+        │   ├── aqi/
+        │   └── weather/
+        └── hourly/
+```
+
+### 4. Environment configuration
+
+Copy the template and fill in your values:
+```bash
+cp .env.template .env
+```
+
+Required variables in `.env`:
+
+| Variable                          | Example / Description                                                        |
+|-----------------------------------|------------------------------------------------------------------------------|
+| `OPEN_WEATHER_API_KEY`            | Your OpenWeather API key                                                     |
+| `AZURE_STORAGE_CONNECTION_STRING` | Azure Blob connection string for DVC & MLflow artifacts                      |
+| `MLFLOW_ARTIFACT_ROOT`            | `wasbs://container@account.blob.core.windows.net/` or a local path           |
+| `MYSQL_HOST`                      | `host.docker.internal` (local) or remote host                               |
+| `MYSQL_PW`                        | MySQL password                                                               |
+| `MYSQL_USER`                      | `root` or your MySQL user                                                    |
+| `MYSQLURL`                        | `mysql+pymysql://root:password@host.docker.internal:3306/mlflow_backend`     |
+| `AIRFLOW_PROJ_DIR`                | Absolute path to this repo on the host                                       |
+| `HORIZON`                         | `24` (forecast horizon in hours)                                             |
+| `TARGET_COL`                      | `pm25` (target column for training)                                          |
+| `STATION_NAME`                    | `us_paro_hourly`                                                             |
+
+### 5. MySQL setup
+
+Create the required databases on your MySQL server:
+```sql
+CREATE DATABASE IF NOT EXISTS mlflow_backend;
+CREATE DATABASE IF NOT EXISTS pypipeline_predictions;
+```
+
+### 6. DVC setup
 
 Configure the remote in `.dvc/config` (example):
 ```ini
@@ -127,18 +200,30 @@ Tracked by DVC:
 - db/mlflow.db
 - db/optuna_study.db
 
-## Run
+### 7. Build and run with Docker Compose
 
-```sh
-cp .env.template .env
-dvc pull
-docker compose up
+```bash
+docker compose up --build
 ```
 
-Run only MLflow:
-```sh
-docker compose up mlflow
+This starts: **Airflow** (webserver + scheduler + worker), **MLflow**, **Optuna Dashboard**, **PostgreSQL** (Airflow metadata), and **Redis** (Celery broker).
+
+Run individual services:
+```bash
+docker compose up mlflow           # MLflow only
+docker compose up optuna-server    # Optuna dashboard only
 ```
+
+## Port Rules
+
+| Port | Service              | Description                              |
+|------|----------------------|------------------------------------------|
+| 5000 | MLflow Tracking      | MLflow tracking server UI and API        |
+| 5050 | MLflow Model Serving | MLflow model serving REST endpoint       |
+| 8080 | Airflow API Server   | Airflow web UI and REST API              |
+| 8081 | Optuna Dashboard     | Optuna hyperparameter tuning dashboard   |
+
+> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **8080** (Airflow), **8081** (Optuna), and **5050** (Model Serving) in your security group.
 
 ## MLflow
 
