@@ -10,6 +10,7 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
   - [Project layout](#project-layout)
   - [Airflow DAGs](#airflow-dags)
   - [Stack](#stack)
+  - [Port Rules](#port-rules)
   - [Setup](#setup)
     - [Environment configuration](#environment-configuration)
     - [DVC setup](#dvc-setup)
@@ -21,6 +22,8 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
     - [Training](#training)
     - [Evaluation](#evaluation)
     - [Serving](#serving)
+      - [Usage example (from processed data)](#usage-example-from-processed-data)
+      - [Usage example (manual payload)](#usage-example-manual-payload)
   - [Development (editable install)](#development-editable-install)
   - [Notebooks](#notebooks)
   - [Secrets](#secrets)
@@ -60,6 +63,17 @@ This repo runs an end-to-end AQI pipeline that:
 - DVC for data versioning (Azure Blob Storage)
 - Optuna for hyperparameter tuning
 - XGBoost for model training
+
+## Port Rules
+
+| Port | Service              | Description                              |
+|------|----------------------|------------------------------------------|
+| 5000 | MLflow Tracking      | MLflow tracking server UI and API        |
+| 5050 | MLflow Model Serving | MLflow model serving REST endpoint       |
+| 8080 | Airflow API Server   | Airflow web UI and REST API              |
+| 8081 | Optuna Dashboard     | Optuna hyperparameter tuning dashboard   |
+
+> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **8080** (Airflow), **8081** (Optuna), and **5050** (Model Serving) in your security group.
 
 ## Setup
 
@@ -148,24 +162,84 @@ more on detail on  `/notebooks/preprocessing.ipynb`
 `.tune.py` runs Optuna to find the best hyperparameters for the XGBoost model per horizon. Results are logged to MLflow. This utilizes the Optuna integration with MLflow to track tuning experiments. `/src/train_houly.py` contains the training logic and is called by both tuning and training scripts, while `tune` is the wrapper. The best hyperparameters are saved to a JSON file under `data/artifacts/` for use in the training step.
 
 ### Training
+
 `.train.py` trains the final model using the best hyperparameters found in tuning. The trained model is logged to MLflow and saved as a pickle file under `data/artifacts/`. After training the model is registered in MLflow Model Registry under a name like `aqi_model_horizon_{HORIZON}`.
+
+
+
 
 ### Evaluation
 `.eval.py` evaluates the trained model on a holdout test set and logs metrics to MLflow. Evaluation results are also saved as JSON under `data/artifacts/` and predictoin on `data/predictions`. The mlflow is modeled to log the evaluation metrics under the same run as training, so you can see the full picture of training and evaluation in one place. The follwoing are the requirements for promotion:
 - MAE < 20
 - RMESE <30
 
-### Serving
-`serve.py` serves the selected model using MLflow's built-in model serving capabilities. The model is loaded from MLflow Model Registry and exposed via a REST API endpoint. This utilize custom pyfunc model that combines all the 24 horizon models into one endpoint, where you can specify the horizon as a query parameter.
-
-
 Example runs:
 ```bash
-python hourly_train_pipeline/preprocess.py
+python hourly_train_pipeline/preprocess.py 
 python hourly_train_pipeline/tune.py
 python hourly_train_pipeline/train.py
 python hourly_train_pipeline/eval.py
+python hourly_train_pipeline/serve.py
 ```
+
+### Serving
+`serve.py` serves the selected model using MLflow's built-in model serving capabilities. The model is loaded from MLflow Model Registry and exposed via a REST API endpoint. This utilize custom pyfunc model that combines all the 24 horizon models into one endpoint, where you can specify the horizon as a query parameter. 
+
+By default `docker-compose.yaml` automatically starts the model serving through `serve` service. The defualt port is set to 5050, and end points is `http://Localhost:5050/invocations`. 
+
+Or Start the serving endpoint locally through CLI:
+```bash
+mlflow models serve --model-uri models:/hourly_pm25_24h_service/latest --host 0.0.0.0 --port 5050 --no-conda
+```
+
+#### Usage example (from processed data)
+
+```python
+import pandas as pd
+import requests
+
+df = pd.read_parquet("data/processed/hourly/us_paro_hourly/train_processed.parquet")
+
+# Drop target/excluded columns to get just features
+exclude = (
+    [f"pm25_plus_{i}h" for i in range(1, 25)]
+    + [f"o3_plus_{i}h" for i in range(1, 25)]
+    + ["segment_id", "imputation_confidence", "pm25_target", "o3_target"]
+)
+features = df.drop(columns=[c for c in exclude if c in df.columns])
+
+# Send 1 row
+sample = features.iloc[[0]]
+payload = {"dataframe_split": sample.to_dict(orient="split")}
+
+resp = requests.post("http://localhost:5050/invocations", json=payload)
+print(resp.json())
+```
+
+#### Usage example (manual payload)
+
+```bash
+curl -X POST http://localhost:5050/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataframe_split": {
+      "columns": ["pm25","o3","hour","day_of_week","is_weekend","is_night",
+        "pm25_missing","o3_missing","pm25_gap_length","o3_gap_length",
+        "was_imputed","hour_sin","hour_cos",
+        "pm25_lag_1","o3_lag_1","pm25_lag_2","o3_lag_2",
+        "...remaining lag, roll, slope, and ratio columns..."],
+      "data": [[35.0, 28.0, 14, 2, 0, 0, 0, 0, 0, 0, 0.0, 0.99, -0.10, "...values..."]]
+    }
+  }'
+```
+
+The response returns predictions for all 24 horizons:
+```json
+{"pm25_plus_1h_pred": [42.1], "pm25_plus_2h_pred": [43.5], "...": "..."}
+```
+
+> **Tip**: The Python approach using processed data is recommended — it guarantees columns and types match the model signature exactly.
+
 
 
 ## Development (editable install)

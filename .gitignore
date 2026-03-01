@@ -12,3 +12,4 @@ cmds.sh
 /hourly_pipeline/USAGE_EXAMPLES.md
 *.egg-info/
 sample.md
+ec2.pem

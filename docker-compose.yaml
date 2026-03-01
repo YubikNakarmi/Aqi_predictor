@@ -201,20 +201,20 @@ services:
     
     command: 
       - mlflow models serve
-      - --model-uri models:/${TARGET_COL}_24h_service/latest
+      - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest
       - --host 0.0.0.0
-      - --port 8000
+      - --port 5050
       - --no-conda
       - --allowed-hosts "*"
     ports:
-      - "8000:8000"
+      - "5050:5050"
     depends_on:
       mlflow:
         condition: service_healthy
     networks:
       - aqi_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://0.0.0.0:8000/invocations || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5050/invocations || exit 1"]
 
 
   trainer:
@@ -230,7 +230,7 @@ services:
     environment:
       - OPTUNA_PATH=sqlite:////optuna/db/optuna.db
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-    command: sh -c "mkdir -p /optuna/db" && mlflow models serve -m models:/${TARGET_COL}_24h_service/latest -p 8000 --no-conda
+    command: sh -c "mkdir -p /optuna/db" 
     depends_on:
       mlflow:
         condition: service_healthy
