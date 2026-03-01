@@ -119,13 +119,26 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### 3. Create data directory structure
+### 3. Create required directories
+
+Several directories are excluded from Git (via `.gitignore`) but are required at runtime. Create them after cloning:
 
 ```bash
+# Data directory tree
 python setup_data_structure.py
+
+# Directories ignored by Git but needed by services
+mkdir -p logs db secrets
 ```
 
-This creates the required directory tree:
+| Directory  | Purpose                                | In `.gitignore` |
+|------------|----------------------------------------|:---------------:|
+| `data/`    | Raw, processed, predictions, artifacts | Yes             |
+| `logs/`    | Airflow scheduler & task logs          | Yes             |
+| `db/`      | MLflow & Optuna SQLite backends        | Yes             |
+| `secrets/` | Credential files (e.g. Azure keys)     | Yes             |
+
+Data directory tree created by `setup_data_structure.py`:
 ```
 data/
 ├── artifacts/
