@@ -201,10 +201,10 @@ services:
     
     command: 
       - mlflow models serve
-      - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest
+      - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest #model location 
       - --host 0.0.0.0
       - --port 5050
-      - --no-conda
+      - --no-conda #ignore conda install
       - --allowed-hosts "*"
     ports:
       - "5050:5050"
@@ -215,6 +215,10 @@ services:
       - aqi_network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://0.0.0.0:5050/invocations || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
 
   trainer:
