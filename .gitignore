@@ -13,3 +13,9 @@ cmds.sh
 *.egg-info/
 sample.md
 ec2.pem
+
+# Terraform local state and providers
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
