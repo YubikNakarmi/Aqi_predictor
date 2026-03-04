@@ -24,7 +24,7 @@
 # The following variables are supported:
 #
 # AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:3.0.3
+#                                Default: apache/airflow:3.1.6
 # AIRFLOW_UID                  - User ID in Airflow containers
 #                                Default: 50000
 # AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
@@ -49,8 +49,12 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.3}
-  # build: .
+  image: ${AIRFLOW_IMAGE_NAME:-my-airflow:latest}
+  build:
+    context: .
+    dockerfile: docker/dockerfile.airflow
+  env_file:
+    - ${ENV_FILE_PATH:-.env}
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -69,18 +73,24 @@ x-airflow-common:
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-mlflow boto3 s3fs apache-airflow-providers-fab}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    # Point Airflow tasks to the MLflow server (mlflow service below)
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    # Host project directory for Docker mounts
+    
+    # Make src importable inside containers
+    PYTHONPATH: /opt/airflow/src:$PYTHONPATH
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data  
-    - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+    - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/src:ro
+    # make the host ./db available at /db as well (for MLflow server backend/artifacts)
     - ${AIRFLOW_PROJ_DIR:-.}/db:/opt/airflow/db
-    # docker mounts the docker.sock file into containers to enable
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -89,14 +99,16 @@ x-airflow-common:
       condition: service_healthy
     postgres:
       condition: service_healthy
+    mlflow:
+      condition: service_healthy
 
 services:
   postgres:
     image: postgres:13
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
@@ -120,6 +132,138 @@ services:
       start_period: 30s
     restart: always
 
+  optuna-server:
+    image: python:3.11-slim
+    container_name: optuna-server
+    ports:
+      - "8081:8081"
+    volumes:
+      - optuna-db:/optuna/db
+    command: >
+      sh -c "pip install --no-cache-dir optuna-dashboard &&
+      mkdir -p /optuna/db &&
+      optuna-dashboard --host 0.0.0.0 --port 8081 sqlite:////optuna/db/optuna.db"
+    restart: unless-stopped
+    networks:
+      - aqi_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:8081/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 1g
+
+
+  # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: aqi-mlflow:latest
+    container_name: mlflow-server
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
+      - --default-artifact-root
+      - ${MLFLOW_ARTIFACT_ROOT} #azure blob storage
+      - --host
+      - 0.0.0.0
+      - --allowed-hosts
+      - "*"
+      - --port
+      - "5000"
+    networks:
+      - aqi_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 2g
+    memswap_limit: 2g
+
+  model-serve:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: aqi-model-serve:latest
+    env_file:
+      - .env
+    
+    command: 
+      - mlflow models serve
+      - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest #model location 
+      - --host 0.0.0.0
+      - --port 5050
+      - --no-conda #ignore conda install
+      - --allowed-hosts "*"
+    ports:
+      - "5050:5050"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:5050/invocations || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  trainer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.trainer
+    image: aqi-trainer:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - optuna-db:/optuna/db
+    environment:
+      - OPTUNA_PATH=sqlite:////optuna/db/optuna.db
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    command: sh -c "mkdir -p /optuna/db" 
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
+    mem_limit: 3g
+    memswap_limit: 3g
+  
+  prediction:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.pred
+    image: aqi-prediction:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
+
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
@@ -142,7 +286,7 @@ services:
     command: scheduler
     environment:
       <<: *airflow-common-env
-      API_KEY: "84737501867f684f51f05bd39eb89b6c"   
+      API_KEY: ${API_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
       interval: 30s
@@ -187,7 +331,7 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
-
+      DEFAULT_ARTIFACT_ROOT: ${DEFAULT_ARTIFACT_ROOT:-file:///opt/airflow/db/artifacts}
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -340,5 +484,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+networks:
+  aqi_network:
+    driver: bridge
 volumes:
+  optuna-db:
+    driver: local
   postgres-db-volume:
+

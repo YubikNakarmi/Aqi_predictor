@@ -1,3 +1,15 @@
 /data
 /.venv
-/.vscode
+.vscode
+.env 
+CHANGES.md
+__pycache__/
+/db
+/logs
+/pypipeline.egg-info
+/secrets
+cmds.sh
+/hourly_pipeline/USAGE_EXAMPLES.md
+*.egg-info/
+sample.md
+ec2.pem

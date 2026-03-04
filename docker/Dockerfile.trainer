@@ -1,0 +1,32 @@
+FROM python:3.11-slim AS builder
+
+WORKDIR /PYPIPELINE
+
+
+RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && apt-get autoremove -y && apt-get clean
+RUN pip install --upgrade pip
+
+RUN pip install --no-cache-dir \
+    mlflow \
+    optuna \
+    optuna-integration[mlflow] \
+    xgboost \
+    scikit-learn \
+    pandas \
+    numpy 
+    
+COPY src/ ./src/
+
+COPY pyproject.toml setup.cfg ./
+RUN pip install --no-cache-dir -e .
+
+# Data is mounted via docker-compose volume at /data (not copied here)
+COPY hourly_train_pipeline/ ./hourly_train_pipeline/
+
+
+ENV PYTHONUNBUFFERED=1
+
+
+
+
+

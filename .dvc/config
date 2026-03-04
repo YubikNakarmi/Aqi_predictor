@@ -1,4 +1,5 @@
 [core]
     remote = azureremote
+    autostage = true
 ['remote "azureremote"']
     url = azure://aqi/static
