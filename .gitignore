@@ -13,3 +13,4 @@ cmds.sh
 *.egg-info/
 sample.md
 ec2.pem
+.terraform*

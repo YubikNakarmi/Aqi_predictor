@@ -198,7 +198,6 @@ services:
     image: aqi-model-serve:latest
     env_file:
       - .env
-    
     command: 
       - mlflow models serve
       - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest #model location 
@@ -256,6 +255,28 @@ services:
       - ./data:/data
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - aqi_network
+    profiles:
+      - manual
+
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.streamlit
+    image: aqi-streamlit:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    ports:
+      - "8501:8501"
     depends_on:
       mlflow:
         condition: service_healthy
