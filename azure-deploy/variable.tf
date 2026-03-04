@@ -1,0 +1,23 @@
+variable "resource_group_name" {
+  description = "Resource grp name"
+  type        = string
+}
+
+variable "location" {
+  description = "Location for the resource group"
+  type        = string
+  default     = "eastus"
+}
+
+variable "vmname" {
+  description = "Name of the virtual machine"
+  type        = string
+  default     = "aqi-vm"
+}
+
+variable "admin-name" {
+    description = "User name for VM admin"
+    type        = string
+    default     = "azureuser"
+  
+}
