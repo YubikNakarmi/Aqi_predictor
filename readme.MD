@@ -20,6 +20,12 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
 - [AQI predictor with Airflow](#aqi-predictor-with-airflow)
   - [Contents](#contents)
   - [Project overview](#project-overview)
+  - [Architecture diagrams](#architecture-diagrams)
+    - [1. System infrastructure architecture](#1-system-infrastructure-architecture)
+    - [2. Data flow diagram](#2-data-flow-diagram)
+    - [3. Training pipeline diagram](#3-training-pipeline-diagram)
+    - [4. Prediction pipeline diagram](#4-prediction-pipeline-diagram)
+    - [5. Module dependency diagram](#5-module-dependency-diagram)
   - [Data flow](#data-flow)
   - [Project layout](#project-layout)
   - [Airflow DAGs](#airflow-dags)
@@ -54,6 +60,217 @@ This repo runs an end-to-end AQI pipeline that:
 - Preprocesses and trains horizon-based models (1-24 hours ahead).
 - Tracks experiments and models in MLflow.
 - Serves a selected model via MLflow model serving (Docker).
+
+## Architecture diagrams
+
+### 1. System infrastructure architecture
+
+Shows every Docker service and external dependency, and how they are connected.
+
+```mermaid
+flowchart LR
+    subgraph External["External Services"]
+        OW["☁️ OpenWeather API"]
+        AZ["☁️ Azure Blob Storage\n(DVC + MLflow artifacts)"]
+        MY["🐬 MySQL\n(MLflow backend)"]
+    end
+
+    subgraph DockerStack["Docker Compose Stack"]
+        direction TB
+        PG["🐘 PostgreSQL\n(Airflow metadata)\n:5432"]
+        RD["🔴 Redis\n(Celery broker)\n:6379"]
+
+        subgraph AirflowCluster["Airflow Cluster"]
+            AAS["API Server :8080"]
+            ASC["Scheduler"]
+            AWK["Celery Worker"]
+            ADP["DAG Processor"]
+        end
+
+        ML["📊 MLflow Server\n:5000"]
+        MS["🚀 Model Serve\n:5050"]
+        OT["🔬 Optuna Dashboard\n:8081"]
+    end
+
+    subgraph PipelineImages["Pipeline Docker Images"]
+        TR["aqi-trainer\n(train pipeline)"]
+        PD["aqi-prediction\n(pred pipeline)"]
+    end
+
+    OW -->|"AQI + weather CSVs"| PD
+    AAS -->|"trigger DAGs"| ASC
+    ASC -->|"queue tasks"| RD
+    RD -->|"dispatch"| AWK
+    AWK -->|"DockerOperator"| TR
+    AWK -->|"DockerOperator"| PD
+    TR -->|"log runs/models"| ML
+    PD -->|"load model"| MS
+    ML -->|"artifacts"| AZ
+    ML -->|"metadata"| MY
+    MS -->|"fetch model"| ML
+    ASC -->|"metadata"| PG
+    AWK -->|"results"| PG
+    OT -->|"reads study"| TR
+```
+
+### 2. Data flow diagram
+
+Traces data from its source all the way to stored predictions.
+
+```mermaid
+flowchart TD
+    OW["☁️ OpenWeather API\n(AQI + Weather endpoints)"]
+
+    subgraph Ingestion["Ingestion"]
+        IG["ingestion_hourly.py\n(fetch & merge by timestamp)"]
+    end
+
+    subgraph Storage["Local File Storage"]
+        RAW["data/raw/\n(CSV files)"]
+        PROC["data/processed/\n(Parquet files)"]
+        ART["data/artifacts/\n(models + params JSON)"]
+        PRED["data/predictions/\n(forecast CSVs)"]
+    end
+
+    subgraph Preprocessing["Preprocessing"]
+        PP["preprocess.py\n• impute missing values\n• outlier capping\n• lag / rolling features\n• time features"]
+    end
+
+    subgraph Training["Training (per horizon 1-24 h)"]
+        TN["tune.py\n(Optuna HPO)"]
+        TR["train.py\n(XGBoost fit)"]
+        EV["eval.py\n(MAE, RMSE check)"]
+    end
+
+    subgraph Serving["Serving"]
+        SV["MLflow model serve\n:5050 /invocations"]
+    end
+
+    subgraph Tracking["Experiment Tracking"]
+        ML["MLflow :5000\n• params & metrics\n• model registry"]
+        AZ["Azure Blob\n(artifact store)"]
+    end
+
+    OW -->|"raw API response"| IG
+    IG -->|"merged CSV"| RAW
+    RAW -->|"read"| PP
+    PP -->|"train/val/test parquet"| PROC
+    PROC -->|"features"| TN
+    TN -->|"best params JSON"| ART
+    ART -->|"hyperparams"| TR
+    PROC -->|"training data"| TR
+    TR -->|"model pickle"| ART
+    TR -->|"log run"| ML
+    ART -->|"model + params"| EV
+    EV -->|"metrics JSON"| ART
+    EV -->|"predictions CSV"| PRED
+    EV -->|"log metrics"| ML
+    ML -->|"registered model"| SV
+    ML -->|"artifacts"| AZ
+    SV -->|"JSON forecast"| Client["🖥️ Client\n(REST /invocations)"]
+```
+
+### 3. Training pipeline diagram
+
+Shows the Airflow `aqi_train_dag` (monthly schedule) step by step.
+
+```mermaid
+flowchart TD
+    START(["⏱️ Monthly trigger\naqi_train_dag"])
+
+    subgraph DockerOp["Each step runs inside aqi-trainer Docker container"]
+        direction TB
+        PP["preprocess_data\npreprocess.py\n─────────────────────\n• merge raw CSVs\n• clean + engineer features\n• write train/val/test parquet"]
+        TN["tune_hyperparameters\ntune.py\n─────────────────────\n• Optuna TPE sampler\n• n_trials XGBoost runs\n• log trials → MLflow\n• save best_params.json"]
+        TR["train_model\ntrain.py\n─────────────────────\n• load best_params.json\n• fit XGBoost per horizon\n• log model → MLflow registry"]
+        EV["evaluate_model\neval.py\n─────────────────────\n• score on holdout set\n• MAE < 20, RMSE < 30 gate\n• log metrics → MLflow\n• promote to Production if pass"]
+    end
+
+    END(["✅ Model in\nMLflow Registry"])
+
+    START --> PP --> TN --> TR --> EV --> END
+```
+
+### 4. Prediction pipeline diagram
+
+Shows the Airflow `aqi_pred_dag` (daily schedule) and the REST serving path.
+
+```mermaid
+flowchart TD
+    subgraph DailyDAG["aqi_pred_dag  (daily Airflow trigger)"]
+        direction LR
+        FD["fetch_data\ningest.py\n─────────────────────\n• call OpenWeather API\n• write raw CSV to\n  data/raw/pred_ingestion/"]
+        PRE["preprocess_data\npreprocess.py\n─────────────────────\n• apply same transforms\n  as training pipeline\n• write parquet to\n  data/processed/pred_ingestion/"]
+        PRD["predict\npred.py\n─────────────────────\n• POST features to\n  model-serve :5050\n• write forecast CSV to\n  data/predictions/"]
+        FD --> PRE --> PRD
+    end
+
+    subgraph ModelServe["MLflow Model Serve  (:5050)"]
+        SV["MultiHorizonPyfunc\n• loads all 24 horizon models\n  from MLflow Registry\n• returns pm25_plus_Nh_pred\n  for N = 1…24"]
+    end
+
+    PRD -->|"POST /invocations\n(dataframe_split JSON)"| SV
+    SV -->|"24-step forecast JSON"| PRD
+    PRD -->|"saves"| OUT["📄 predictions CSV\ndata/predictions/hourly/…"]
+```
+
+### 5. Module dependency diagram
+
+Shows how the Python source packages relate to each pipeline script.
+
+```mermaid
+flowchart LR
+    subgraph srcModules["src/ (installed as pypipeline)"]
+        direction TB
+        DHP["modules.data_hourly_preprocessing\n• DataCleaner\n• feature engineering helpers"]
+        LU["modules.logging_utils\n• setup_logging()"]
+        MU["modules.mysql_utils\n• DB connection helpers"]
+        PL["modules.plots\n• evaluation plot helpers"]
+        IH["scripts.ingestion_hourly\n• fetch_aqi_history()\n• fetch_weather_history()"]
+        TH["scripts.train_hourly\n• build_features()\n• train_xgb_model()"]
+    end
+
+    subgraph trainPipeline["hourly_train_pipeline/"]
+        PP2["preprocess.py"]
+        TN2["tune.py"]
+        TR2["train.py"]
+        EV2["eval.py"]
+        SV2["serve.py"]
+    end
+
+    subgraph predPipeline["hourly_pred_pipeline/"]
+        IG2["ingest.py"]
+        PR2["preprocess.py"]
+        PD2["pred.py"]
+    end
+
+    subgraph dagFiles["dags/"]
+        TD["train_dag.py"]
+        PDD["pred_dag.py"]
+        MD["monitor_dag.py"]
+    end
+
+    DHP --> PP2
+    DHP --> PR2
+    LU --> PP2
+    LU --> TN2
+    LU --> TR2
+    LU --> EV2
+    LU --> IG2
+    LU --> PR2
+    MU --> EV2
+    PL --> EV2
+    IH --> IG2
+    TH --> TN2
+    TH --> TR2
+    TD -->|"DockerOperator"| PP2
+    TD -->|"DockerOperator"| TN2
+    TD -->|"DockerOperator"| TR2
+    TD -->|"DockerOperator"| EV2
+    PDD -->|"DockerOperator"| IG2
+    PDD -->|"DockerOperator"| PR2
+    PDD -->|"DockerOperator"| PD2
+```
 
 ## Data flow
 
