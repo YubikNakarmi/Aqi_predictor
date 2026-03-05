@@ -76,7 +76,7 @@ def pred():
             update_pipeline_metadata(
                 metadata_file,
                 {
-                    "timestamp_utc": datetime.datetime.utcnow().isoformat() + "Z",
+                    "timestamp_utc": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
                     "pipeline": "prediction",
                     "stage": "predict",
                     "status": "success",
@@ -91,7 +91,7 @@ def pred():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.utcnow().isoformat() + "Z",
+                "timestamp_utc": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
                 "pipeline": "prediction",
                 "stage": "predict",
                 "status": "failed",
