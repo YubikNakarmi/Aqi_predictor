@@ -1,6 +1,6 @@
 provider "azurerm" {
-
     features {}# Automatically authenticates, using azure cli (az login) for credentials
+    resource_provider_registrations = "none"
   
 }
 
@@ -10,7 +10,7 @@ resource "azurerm_resource_group" "rg" {
 }
 
 
-resource "azurerm_virtualnetwork" "vnet" {
+resource "azurerm_virtual_network" "vnet" {
     name     = "${var.resource_group_name}-vnet"
     address_space = ["10.0.0.0/16"] #vnet address allocation
     location = azurerm_resource_group.rg.location

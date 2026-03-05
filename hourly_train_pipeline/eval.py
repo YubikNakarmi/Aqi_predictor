@@ -18,6 +18,16 @@ PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro
 
 logger = setup_logging(__name__)
 
+def metadata():
+    data ={
+        "horizon": HORIZON,
+        "target_col": TARGET_COL,
+        "value_min": VALUE_MIN,
+        "value_max": VALUE_MAX,
+        "Mae":
+        "date": str(datetime.datetime.now())
+    }
+    return data
 
 
 def mlflow_sanity_check()->bool:
