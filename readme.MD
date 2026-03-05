@@ -671,3 +671,6 @@ MYSQL_PW=...
 For Azure Blob Storage, the connection string can also be placed in `secrets/azure_storage_connection_string.txt` for services that read from file.
 
 ---
+
+# Credits
+- [Training data source](https://opendatanepal.com/datasets/air-quality-data-in-kathmandu)
