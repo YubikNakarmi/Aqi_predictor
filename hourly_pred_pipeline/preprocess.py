@@ -3,7 +3,7 @@ import os
 from modules.data_hourly_preprocessing import DataCleaner
 from scripts import ingestion_hourly
 from modules.logging_utils import setup_logging
-from datetime import datetime, timedelta
+import datetime
 from modules.runtime_metadata import update_pipeline_metadata
 logger = setup_logging(__name__)
 
@@ -19,7 +19,7 @@ PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "data/processed/pred
 def preprocess():
     metadata_file = "data/metadata/prediction.json"
     try:
-        input_file = PRED_INGEST_PATH + r"/" + datetime.now().strftime("%Y-%m-%d") + ".csv"
+        input_file = PRED_INGEST_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
         df = pd.read_csv(input_file)
 
         clean = DataCleaner()
@@ -34,13 +34,13 @@ def preprocess():
         df_3 = clean.add_segmentation(df_3)
 
         df_4 = clean.engineer_features(df_3)
-        output_file = PRED_PROCESSED_PATH + r"/" + datetime.now().strftime("%Y-%m-%d") + ".csv"
+        output_file = PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
         df_4.to_parquet(output_file)
 
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                "timestamp_utc": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
                 "pipeline": "prediction",
                 "stage": "preprocess",
                 "status": "success",
@@ -54,7 +54,7 @@ def preprocess():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.utcnow().isoformat() + "Z",
+                "timestamp_utc": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
                 "pipeline": "prediction",
                 "stage": "preprocess",
                 "status": "failed",

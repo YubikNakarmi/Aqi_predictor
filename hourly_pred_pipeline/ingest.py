@@ -23,7 +23,7 @@ def ingest():
         )
         logger.info("Data preview:\n%s", data.head())
 
-        output_file = PRED_INGEST_PATH + r"/" + datetime.datetime.now().strftime("%Y-%m-%d") + ".csv"
+        output_file = PRED_INGEST_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
         ingestion_hourly.save_data(# save data
             data=data,
             file_path=output_file,

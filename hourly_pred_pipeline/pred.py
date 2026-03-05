@@ -54,24 +54,23 @@ def pred():
             run_id = mlflow.active_run().info.run_id
             model_name = "hourly_pm25_24h_service"
             model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
-            data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now().strftime("%Y-%m-%d") + ".csv")
+            data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
             logger.info("Data preview:\n%s", data.head())
             
             expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
             logger.info("Expected columns for prediction: %s", expected_cols)
             prediction = model.predict(data.iloc[[1]][expected_cols])#only using latest aqi fal for proedictoin
 
-            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")# get current time
-            pred_df = pd.DataFrame(prediction, columns=["prediction"])
-            pred_df["timestamp"] = now
-            logger.info("Prediction result:\n%s", pred_df)
+            now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")# get current time
+            prediction["timestamp"] = now
+            logger.info("Prediction result:\n%s", prediction)
 
-            output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now().strftime("%Y-%m-%d") + ".csv"
-            pred_df.to_csv(output_file, index=False)
+            output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
+            prediction.to_csv(output_file, index=False)
             logger.info("Prediction saved to %s", output_file)
 
             if PRED_MYSQLURI:#check if MySQL URI is provided, if yes write to MySQL
-                mysql_utils.write_dataframe_to_mysql(pred_df, table_name="hourly_predictions", if_exists="append")
+                mysql_utils.write_dataframe_to_mysql(prediction, table_name="hourly_predictions", if_exists="append")
                 logger.info("Prediction written to MySQL table hourly_predictions")
 
             update_pipeline_metadata(
@@ -84,8 +83,8 @@ def pred():
                     "mlflow_run_id": run_id,
                     "registered_model": model_name,
                     "output_file": output_file,
-                    "prediction_rows": int(len(pred_df)),
-                    "latest_prediction": float(pred_df["prediction"].iloc[0]),
+                    "prediction_rows": int(len(prediction)),
+                    "latest_prediction": float(prediction["prediction"].iloc[0]),
                 },
             )
     except Exception as exc:
