@@ -284,6 +284,8 @@ services:
       - aqi_network
     profiles:
       - manual
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:8501/health || exit 1"]
 
   airflow-apiserver:
     <<: *airflow-common

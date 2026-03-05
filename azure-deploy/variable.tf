@@ -21,3 +21,9 @@ variable "admin-name" {
     default     = "azureuser"
   
 }
+
+variable "my-ip" {
+    description = "Your public IP address for NSG rule"
+    type        = string
+    default     = "myip"
+}
