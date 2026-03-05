@@ -1,3 +1,5 @@
+<div align="center">
+
 # AQI Predictor
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
@@ -14,51 +16,33 @@
 
 [![Pylint](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml/badge.svg?branch=test)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml)
 
-An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.
+**An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.**
 
-## Contents
-- [AQI Predictor](#aqi-predictor)
-  - [Contents](#contents)
-  - [Project Overview](#project-overview)
-  - [Architecture](#architecture)
-  - [Data Flow](#data-flow)
-    - [Training (monthly)](#training-monthly)
-    - [Prediction (daily)](#prediction-daily)
-  - [Project Layout](#project-layout)
-  - [Airflow DAGs](#airflow-dags)
-  - [Stack](#stack)
-  - [Setup](#setup)
-    - [Prerequisites](#prerequisites)
-    - [1. Clone and create virtual environment](#1-clone-and-create-virtual-environment)
-    - [2. Install dependencies](#2-install-dependencies)
-    - [3. Create required directories](#3-create-required-directories)
-    - [4. Environment configuration](#4-environment-configuration)
-    - [5. MySQL setup](#5-mysql-setup)
-    - [6. DVC setup](#6-dvc-setup)
-    - [7. Build and run with Docker Compose](#7-build-and-run-with-docker-compose)
-  - [Port Reference](#port-reference)
-  - [MLflow](#mlflow)
-  - [Training Pipeline](#training-pipeline)
-    - [Preprocessing](#preprocessing)
-      - [Gap Classification](#gap-classification)
-      - [Before Segmentation — raw hourly data with gaps](#before-segmentation--raw-hourly-data-with-gaps)
-      - [After Imputation + Segmentation](#after-imputation--segmentation)
-      - [Effect on Lag Features — computed within each `segment_id`](#effect-on-lag-features--computed-within-each-segment_id)
-    - [Tuning](#tuning)
-    - [Training](#training)
-    - [Evaluation](#evaluation)
-    - [Serving](#serving)
-      - [Usage example (from processed data)](#usage-example-from-processed-data)
-      - [Usage example (manual payload)](#usage-example-manual-payload)
-  - [Prediction Pipeline](#prediction-pipeline)
-    - [Ingestion](#ingestion)
-    - [Preprocessing](#preprocessing-1)
-    - [Prediction](#prediction)
-  - [Frontend](#frontend)
-  - [Azure Deployment](#azure-deployment)
-  - [Development (editable install)](#development-editable-install)
-  - [Notebooks](#notebooks)
-  - [Secrets](#secrets)
+</div>
+
+---
+
+<details>
+<summary><b>Table of Contents</b></summary>
+
+- [Project Overview](#project-overview)
+- [Architecture](#architecture)
+- [Data Flow](#data-flow)
+- [Project Layout](#project-layout)
+- [Airflow DAGs](#airflow-dags)
+- [Stack](#stack)
+- [Setup](#setup)
+- [Port Reference](#port-reference)
+- [MLflow](#mlflow)
+- [Training Pipeline](#training-pipeline)
+- [Prediction Pipeline](#prediction-pipeline)
+- [Frontend](#frontend)
+- [Azure Deployment](#azure-deployment)
+- [Development](#development-editable-install)
+- [Notebooks](#notebooks)
+- [Secrets](#secrets)
+
+</details>
 
 ## Project Overview
 
@@ -74,9 +58,17 @@ This project builds and operates a complete AQI forecasting system:
 - **Displays** predictions in a Streamlit dashboard.
 - **Orchestrates** training (monthly) and prediction (daily) via Airflow DAGs running Dockerized tasks.
 
+---
+
 ## Architecture
 
+<div align="center">
+
 ![Pipeline Architecture](.github_utils/pipeline-Page-1.drawio.png)
+
+</div>
+
+---
 
 ## Data Flow
 
@@ -95,7 +87,14 @@ This project builds and operates a complete AQI forecasting system:
 3. The latest `hourly_pm25_24h_service` model produces 24-hour forecasts.
 4. Predictions are saved to `data/predictions/hourly/` and optionally written to MySQL.
 
+---
+
+---
+
 ## Project Layout
+
+<details>
+<summary><b>Click to expand full directory tree</b></summary>
 
 ```
 ├── dags/                        # Airflow DAG definitions
@@ -145,6 +144,10 @@ This project builds and operates a complete AQI forecasting system:
 └── setup_data_structure.py      # Creates data directory tree
 ```
 
+</details>
+
+---
+
 ## Airflow DAGs
 
 | DAG | Schedule | Tasks | Description |
@@ -153,7 +156,10 @@ This project builds and operates a complete AQI forecasting system:
 | `aqi_train_dag` | `@monthly` | `preprocess_data` → `tune_hyperparameters` → `train_model` → `evaluate_model` | Full retraining pipeline using the `aqi-trainer` Docker image |
 | `monitor_dag` | — | — | Placeholder for future monitoring tasks |
 
-All tasks run as **DockerOperators**, mounting the host `data/` and `db/` directories into containers. Environment variables (API keys, MLflow URI, horizon, split ratios, target columns) are passed from the Airflow environment.
+> [!NOTE]
+> All tasks run as **DockerOperators**, mounting the host `data/` and `db/` directories into containers. Environment variables (API keys, MLflow URI, horizon, split ratios, target columns) are passed from the Airflow environment.
+
+---
 
 ## Stack
 
@@ -169,6 +175,8 @@ All tasks run as **DockerOperators**, mounting the host `data/` and `db/` direct
 | **MySQL** | MLflow backend store and prediction logging |
 | **Azure Blob Storage** | MLflow artifact store and DVC remote |
 | **Terraform** | Azure infrastructure provisioning |
+
+---
 
 ## Setup
 
@@ -256,7 +264,11 @@ Copy the template and fill in your values:
 cp .env.template .env
 ```
 
-Required variables in `.env`:
+> [!IMPORTANT]
+> All variables below must be set before running any service.
+
+<details>
+<summary><b>Required variables in <code>.env</code></b></summary>
 
 | Variable | Example / Description |
 |----------|----------------------|
@@ -274,6 +286,8 @@ Required variables in `.env`:
 | `STATION_NAME` | `us_paro_hourly` |
 | `VALUE_MIN` | `0` (minimum valid AQI value) |
 | `VALUE_MAX` | `500` (maximum valid AQI value) |
+
+</details>
 
 ### 5. MySQL setup
 
@@ -313,7 +327,9 @@ docker compose up --build
 
 This starts the core services: **Airflow** (API server + scheduler + DAG processor + worker + triggerer), **MLflow**, **Optuna Dashboard**, **PostgreSQL** (Airflow metadata), and **Redis** (Celery broker).
 
-Run individual or optional services:
+<details>
+<summary><b>Run individual or optional services</b></summary>
+
 ```bash
 docker compose up mlflow                       # MLflow only
 docker compose up optuna-server                # Optuna dashboard only
@@ -322,6 +338,10 @@ docker compose --profile manual up prediction  # Prediction container
 docker compose --profile manual up streamlit   # Streamlit dashboard
 docker compose --profile flower up flower      # Celery Flower monitoring
 ```
+
+</details>
+
+---
 
 ## Port Reference
 
@@ -334,17 +354,25 @@ docker compose --profile flower up flower      # Celery Flower monitoring
 | 8081 | Optuna Dashboard | Hyperparameter tuning dashboard |
 | 8501 | Streamlit | AQI prediction dashboard (optional, `--profile manual`) |
 
-> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **5050** (Model Serving), **8080** (Airflow), **8081** (Optuna), and **8501** (Streamlit) in your security group.
+> [!WARNING]
+> **Cloud inbound rules** — Open ports **22** (SSH), **5000** (MLflow), **5050** (Model Serving), **8080** (Airflow), **8081** (Optuna), and **8501** (Streamlit) in your security group.
+
+---
 
 ## MLflow
 
-The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000. For local development, you can switch to a SQLite backend by changing `MYSQLURL` to a local `.sqlite` path and `MLFLOW_ARTIFACT_ROOT` to a local directory in `.env`.
+The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000.
+
+> [!TIP]
+> For local development, you can switch to a SQLite backend by changing `MYSQLURL` to a local `.sqlite` path and `MLFLOW_ARTIFACT_ROOT` to a local directory in `.env`.
 
 MLflow stores:
 - Parameters and metrics for each training run
 - Optuna tuning results (via `MLflowCallback`)
 - Registered models per horizon (`pm25_plus_{h}h_model`)
 - Composite serving model (`hourly_pm25_24h_service`)
+
+---
 
 ## Training Pipeline
 
@@ -529,7 +557,10 @@ The response returns predictions for all 24 horizons:
 {"pm25_plus_1h_pred": [42.1], "pm25_plus_2h_pred": [43.5], "...": "..."}
 ```
 
-> **Tip**: The Python approach using processed data is recommended — it guarantees columns and types match the model signature exactly.
+> [!TIP]
+> The Python approach using processed data is recommended — it guarantees columns and types match the model signature exactly.
+
+---
 
 ## Prediction Pipeline
 
@@ -574,6 +605,8 @@ docker compose --profile manual up streamlit
 
 The dashboard is available at http://localhost:8501.
 
+---
+
 ## Azure Deployment
 
 Infrastructure-as-code for Azure is in `azure-deploy/` using Terraform:
@@ -587,6 +620,8 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+---
 
 ## Development (editable install)
 
@@ -604,6 +639,8 @@ To undo:
 pip uninstall pypipeline
 ```
 
+---
+
 ## Notebooks
 
 Exploration and visualization notebooks live under `notebooks/`:
@@ -617,7 +654,12 @@ Exploration and visualization notebooks live under `notebooks/`:
 | `pred.ipynb` | Prediction experimentation |
 | `visuals.ipynb` | Data visualizations |
 
+---
+
 ## Secrets
+
+> [!CAUTION]
+> Never commit secrets to version control. All credential files are git-ignored.
 
 Store all secrets in `.env` (git-ignored). Required credentials:
 ```
@@ -627,3 +669,5 @@ MYSQL_PW=...
 ```
 
 For Azure Blob Storage, the connection string can also be placed in `secrets/azure_storage_connection_string.txt` for services that read from file.
+
+---
