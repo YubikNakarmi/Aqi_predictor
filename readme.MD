@@ -40,6 +40,10 @@ An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM
   - [MLflow](#mlflow)
   - [Training Pipeline](#training-pipeline)
     - [Preprocessing](#preprocessing)
+      - [Gap Classification](#gap-classification)
+      - [Before Segmentation — raw hourly data with gaps](#before-segmentation--raw-hourly-data-with-gaps)
+      - [After Imputation + Segmentation](#after-imputation--segmentation)
+      - [Effect on Lag Features — computed within each `segment_id`](#effect-on-lag-features--computed-within-each-segment_id)
     - [Tuning](#tuning)
     - [Training](#training)
     - [Evaluation](#evaluation)
@@ -72,35 +76,7 @@ This project builds and operates a complete AQI forecasting system:
 
 ## Architecture
 
-```
-┌─────────────┐     ┌──────────────────────────────────────────────┐
-│  OpenWeather │────▶│  Airflow (Scheduler + Worker + API Server)   │
-│     API      │     │                                              │
-└─────────────┘     │  ┌──────────────┐   ┌───────────────────┐    │
-                    │  │ aqi_pred_dag │   │  aqi_train_dag    │    │
-                    │  │   (daily)    │   │    (monthly)      │    │
-                    │  │ ingest ─▶    │   │ preprocess ─▶     │    │
-                    │  │ preprocess ─▶│   │ tune ─▶           │    │
-                    │  │ predict      │   │ train ─▶          │    │
-                    │  └──────┬───────┘   │ evaluate          │    │
-                    │         │           └────────┬──────────┘    │
-                    └─────────┼────────────────────┼───────────────┘
-                              │                    │
-                    ┌─────────▼────────────────────▼───────────────┐
-                    │              MLflow Server                    │
-                    │   Experiment Tracking  ·  Model Registry     │
-                    │   Artifact Store (Azure Blob / local)        │
-                    └──────────────────┬───────────────────────────┘
-                                       │
-                    ┌──────────────────▼───────────────────────────┐
-                    │          Model Serving (port 5050)            │
-                    │   24-horizon pyfunc → /invocations            │
-                    └──────────────────┬───────────────────────────┘
-                                       │
-                    ┌──────────────────▼───────────────────────────┐
-                    │        Streamlit Dashboard (port 8501)        │
-                    └──────────────────────────────────────────────┘
-```
+![Pipeline Architecture](.github_utils/pipeline-Page-1.drawio.png)
 
 ## Data Flow
 
@@ -393,6 +369,83 @@ HORIZON=24
 - Shifted target column creation for all horizons (1–24h ahead)
 
 Output: `train_processed.parquet`, `val_processed.parquet`, `test_processed.parquet`
+
+<details>
+<summary><b>Data Segmentation — how it works (click to expand)</b></summary>
+
+#### Gap Classification
+
+```
+Gap Size       │ Strategy        │ Confidence
+───────────────┼─────────────────┼───────────
+≤ 6 hours      │ Interpolation   │ high
+6–12 hours     │ KNN (k=6)       │ medium
+12–24 hours    │ Tag only        │ low
+> 24 hours     │ Segment break   │ —
+```
+
+#### Before Segmentation — raw hourly data with gaps
+
+```
+ Row │ Timestamp          │  pm25  │  o3   │ missing │ gap_len │ Notes
+─────┼────────────────────┼────────┼───────┼─────────┼─────────┼──────────────────
+  0  │ 2025-01-01 00:00   │  35.0  │ 28.0  │    0    │    0    │
+  1  │ 2025-01-01 01:00   │  38.0  │ 30.0  │    0    │    0    │
+  2  │ 2025-01-01 02:00   │   -    │   -   │    1    │    2    │ ← small gap
+  3  │ 2025-01-01 03:00   │   -    │   -   │    1    │    2    │ ← small gap
+  4  │ 2025-01-01 04:00   │  40.0  │ 32.0  │    0    │    0    │
+  5  │ 2025-01-01 05:00   │  42.0  │ 34.0  │    0    │    0    │
+  6  │ 2025-01-01 06:00   │   -    │   -   │    1    │   30    │ ┐
+  7  │ 2025-01-01 07:00   │   -    │   -   │    1    │   30    │ │
+  8  │ 2025-01-01 08:00   │   -    │   -   │    1    │   30    │ │ very large
+  .  │        ...         │   -    │   -   │    1    │   30    │ │ gap (30h)
+  .  │        ...         │   -    │   -   │    1    │   30    │ │ NOT imputed
+ 35  │ 2025-01-02 11:00   │   -    │   -   │    1    │   30    │ ┘
+ 36  │ 2025-01-02 12:00   │  55.0  │ 40.0  │    0    │    0    │
+ 37  │ 2025-01-02 13:00   │  58.0  │ 42.0  │    0    │    0    │
+ 38  │ 2025-01-02 14:00   │  60.0  │ 44.0  │    0    │    0    │
+```
+
+#### After Imputation + Segmentation
+
+```
+ Row │ Timestamp          │  pm25  │  o3   │ imputed │ confidence │ gap_len │ seg_id │ Notes
+─────┼────────────────────┼────────┼───────┼─────────┼────────────┼─────────┼────────┼────────────
+  0  │ 2025-01-01 00:00   │  35.0  │ 28.0  │    0    │   none     │    0    │   0    │
+  1  │ 2025-01-01 01:00   │  38.0  │ 30.0  │    0    │   none     │    0    │   0    │
+  2  │ 2025-01-01 02:00   │ (38.7) │(30.7) │    1    │   high     │    2    │   0    │ interpolated
+  3  │ 2025-01-01 03:00   │ (39.3) │(31.3) │    1    │   high     │    2    │   0    │ interpolated
+  4  │ 2025-01-01 04:00   │  40.0  │ 32.0  │    0    │   none     │    0    │   0    │
+  5  │ 2025-01-01 05:00   │  42.0  │ 34.0  │    0    │   none     │    0    │   0    │
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  SEGMENT BREAK (gap 30h > 24h)  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+  6  │ 2025-01-01 06:00   │   -    │   -   │    0    │     -      │   30    │   0    │ ┐ dropped
+  .  │        ...         │   -    │   -   │    0    │     -      │   30    │   0    │ │ at train
+ 35  │ 2025-01-02 11:00   │   -    │   -   │    0    │     -      │   30    │   0    │ ┘ time
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+ 36  │ 2025-01-02 12:00   │  55.0  │ 40.0  │    0    │   none     │    0    │   1    │ ← new seg
+ 37  │ 2025-01-02 13:00   │  58.0  │ 42.0  │    0    │   none     │    0    │   1    │
+ 38  │ 2025-01-02 14:00   │  60.0  │ 44.0  │    0    │   none     │    0    │   1    │
+
+  ( ) = imputed value       - = NaN / missing
+```
+
+#### Effect on Lag Features — computed within each `segment_id`
+
+```
+ Row │ Timestamp          │  pm25  │ seg_id │ lag_1  │ lag_2  │ roll_3 │ Why
+─────┼────────────────────┼────────┼────────┼────────┼────────┼────────┼───────────────────────
+  4  │ 2025-01-01 04:00   │  40.0  │   0    │  39.3  │  38.7  │  38.7  │ lags from same segment
+  5  │ 2025-01-01 05:00   │  42.0  │   0    │  40.0  │  39.3  │  39.4  │ lags from same segment
+     │                    │        │        │        │        │        │
+ 36  │ 2025-01-02 12:00   │  55.0  │   1    │  NaN   │  NaN   │  NaN   │ start of new segment
+ 37  │ 2025-01-02 13:00   │  58.0  │   1    │  55.0  │  NaN   │  55.0  │ lag within segment 1
+ 38  │ 2025-01-02 14:00   │  60.0  │   1    │  58.0  │  55.0  │  56.5  │ lag within segment 1
+
+  Row 36: lag_1 = NaN (NOT 42.0 from row 5)
+  Without segmentation it would be 42.0 — a value from 30h ago → DATA LEAKAGE
+```
+
+</details>
 
 ### Tuning
 `tune.py` runs Optuna (default 60 trials) to find optimal XGBoost hyperparameters. Results are logged to the `xgb_aqi_hourly_tuning` MLflow experiment via `MLflowCallback`. The best parameters are saved to `data/artifacts/best_params.json`. Optuna study state is persisted in a SQLite database (`db/optuna.db`).

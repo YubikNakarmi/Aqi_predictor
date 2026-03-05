@@ -1,3 +1,4 @@
+from fastapi import requests
 import mlflow
 from modules import logging_utils
 import os
@@ -12,6 +13,7 @@ PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "data/processed/pred
 PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "data/predictions/hourly/us_paro_hourly/prod")
 PRED_MYSQLURI = os.environ.get("PRED_MYSQLURI", "mysql+pymysql://root:yubik123@localhost:3306/pypipeline_predictions")
 PREDICTION_METADATA_FILE = os.environ.get("PREDICTION_METADATA_FILE", "data/metadata/prediction.json")
+MLFLOW_SERVE_URI = os.getenv("MLFLOW_SERVE_URI", "http://localhost:5050/hourly_pm25_24h_service/invocations")
 logger = logging_utils.setup_logging(__name__)
 
 
@@ -33,6 +35,17 @@ def path_sanity_check()->bool:#check if path exists
         raise FileNotFoundError(f"Prediction output path {PRED_OUTPUT_PATH} does not exist")
     logger.info("Data paths verified: %s, %s", PRED_PROCESSED_PATH, PRED_OUTPUT_PATH)
     return True
+
+def check_api()->bool:#check if mlflow serve is up    
+    try:
+        response = requests.get(MLFLOW_SERVE_URI)
+        if response.status_code == 200:
+            logger.info("MLflow model serve is up at %s", MLFLOW_SERVE_URI)
+            return True
+        else:
+            raise ConnectionError(f"MLflow model serve at {MLFLOW_SERVE_URI} returned status code {response.status_code}")
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to MLflow model serve at {MLFLOW_SERVE_URI}: {e}")
     
 
 def pred():
@@ -51,19 +64,37 @@ def pred():
         mlflow.set_experiment("xgb_aqi_hourly_prediction")
 
         with mlflow.start_run(run_name="hourly_prediction_run"):#set prediction expermiment
-            run_id = mlflow.active_run().info.run_id
-            model_name = "hourly_pm25_24h_service"
-            model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
-            data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
-            logger.info("Data preview:\n%s", data.head())
-            
-            expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
-            logger.info("Expected columns for prediction: %s", expected_cols)
-            prediction = model.predict(data.iloc[[1]][expected_cols])#only using latest aqi fal for proedictoin
 
-            now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")# get current time
-            prediction["timestamp"] = now
-            logger.info("Prediction result:\n%s", prediction)
+
+            if check_api():
+                logger.info("Using MLflow model serve API for prediction")
+                data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+                logger.info("Data preview:\n%s", data.head())
+                response = requests.post(MLFLOW_SERVE_URI, json=data.iloc[[1]].to_dict(orient="records")[0])#only using latest aqi fal for proedictoin
+                if response.status_code == 200:
+                    prediction = pd.DataFrame(response.json())
+                    logger.info("Prediction result:\n%s", prediction)
+                else:
+                    raise ValueError(f"MLflow model serve returned status code {response.status_code}: {response.text}")
+
+            else:    
+                logger.info("Using MLflow pyfunc API for prediction")
+                run_id = mlflow.active_run().info.run_id
+                model_name = "hourly_pm25_24h_service"
+                model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
+                data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+                logger.info("Data preview:\n%s", data.head())
+                
+                expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
+                logger.info("Expected columns for prediction: %s", expected_cols)
+                prediction = model.predict(data.iloc[[1]][expected_cols])#only using latest aqi fal for proedictoin
+
+                now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")# get current time
+                prediction["timestamp"] = now
+                logger.info("Prediction result:\n%s", prediction)
+
+            ''' output '''
+            
 
             output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
             prediction.to_csv(output_file, index=False)
