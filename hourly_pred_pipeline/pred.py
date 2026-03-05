@@ -80,7 +80,12 @@ def pred():
                 data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
                 logger.info("Data preview:\n%s", data.head())
 
-                response = requests.post(MLFLOW_SERVE_URI, json=data.iloc[[1]].to_dict(orient="records")[0])#only using latest aqi fal for proedictoin
+                responses = pd.DataFrame()
+
+                for data in data.itertuples():
+                    response = requests.post(MLFLOW_SERVE_URI, json=data.to_dict(orient="records")[0])#only using latest aqi fal for proedictoin
+                    responses = pd.concat([responses, pd.DataFrame([response.json()])], ignore_index=True)
+
                 if response.status_code == 200:
                     prediction = pd.DataFrame(response.json())
                     logger.info("Prediction result:\n%s", prediction)
@@ -105,7 +110,6 @@ def pred():
 
             ''' output '''
             
-
             output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
             prediction.to_csv(output_file, index=False)
             logger.info("Prediction saved to %s", output_file)
