@@ -1,6 +1,6 @@
-# AQI predictor with Airflow
+# AQI Predictor
 
-![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/XGBoost-ML-FF6600?logo=xgboost&logoColor=white)
 ![MLflow](https://img.shields.io/badge/MLflow-Tracking-0194E2?logo=mlflow&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Airflow-Orchestration-017CEE?logo=apacheairflow&logoColor=white)
@@ -9,31 +9,34 @@
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
 ![Azure Blob](https://img.shields.io/badge/Azure%20Blob-Storage-0078D4?logo=microsoftazure&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?logo=mysql&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B?logo=streamlit&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-IaC-844FBA?logo=terraform&logoColor=white)
 
 [![Pylint](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml/badge.svg?branch=test)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml)
 
-
-
-This project predicts hourly AQI using historical and live CSV data. Data stays in CSV files (no external DB required for core data).
+An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.
 
 ## Contents
-- [AQI predictor with Airflow](#aqi-predictor-with-airflow)
+- [AQI Predictor](#aqi-predictor)
   - [Contents](#contents)
-  - [Project overview](#project-overview)
-  - [Data flow](#data-flow)
-  - [Project layout](#project-layout)
+  - [Project Overview](#project-overview)
+  - [Architecture](#architecture)
+  - [Data Flow](#data-flow)
+    - [Training (monthly)](#training-monthly)
+    - [Prediction (daily)](#prediction-daily)
+  - [Project Layout](#project-layout)
   - [Airflow DAGs](#airflow-dags)
   - [Stack](#stack)
   - [Setup](#setup)
     - [Prerequisites](#prerequisites)
     - [1. Clone and create virtual environment](#1-clone-and-create-virtual-environment)
     - [2. Install dependencies](#2-install-dependencies)
-    - [3. Create data directory structure](#3-create-data-directory-structure)
+    - [3. Create required directories](#3-create-required-directories)
     - [4. Environment configuration](#4-environment-configuration)
     - [5. MySQL setup](#5-mysql-setup)
     - [6. DVC setup](#6-dvc-setup)
     - [7. Build and run with Docker Compose](#7-build-and-run-with-docker-compose)
-  - [Port Rules](#port-rules)
+  - [Port Reference](#port-reference)
   - [MLflow](#mlflow)
   - [Training Pipeline](#training-pipeline)
     - [Preprocessing](#preprocessing)
@@ -43,57 +46,165 @@ This project predicts hourly AQI using historical and live CSV data. Data stays 
     - [Serving](#serving)
       - [Usage example (from processed data)](#usage-example-from-processed-data)
       - [Usage example (manual payload)](#usage-example-manual-payload)
+  - [Prediction Pipeline](#prediction-pipeline)
+    - [Ingestion](#ingestion)
+    - [Preprocessing](#preprocessing-1)
+    - [Prediction](#prediction)
+  - [Frontend](#frontend)
+  - [Azure Deployment](#azure-deployment)
   - [Development (editable install)](#development-editable-install)
   - [Notebooks](#notebooks)
   - [Secrets](#secrets)
 
-## Project overview
+## Project Overview
 
-This repo runs an end-to-end AQI pipeline that:
-- Ingests AQI and weather history from OpenWeather APIs and writes CSVs.
-- Preprocesses and trains horizon-based models (1-24 hours ahead).
-- Tracks experiments and models in MLflow.
-- Serves a selected model via MLflow model serving (Docker).
+This project builds and operates a complete AQI forecasting system:
 
-## Data flow
+- **Ingests** AQI and weather data from the OpenWeather API (historical and live).
+- **Preprocesses** raw data with cleaning, imputation, segmentation, and feature engineering.
+- **Tunes** hyperparameters per forecast horizon using Optuna.
+- **Trains** 24 independent XGBoost models (one per hour ahead, 1–24h).
+- **Evaluates** models against MAE/RMSE thresholds and promotes passing models to staging.
+- **Serves** all 24 models behind a single MLflow `pyfunc` endpoint.
+- **Predicts** daily by ingesting live data, preprocessing, and running inference.
+- **Displays** predictions in a Streamlit dashboard.
+- **Orchestrates** training (monthly) and prediction (daily) via Airflow DAGs running Dockerized tasks.
 
-1. Ingestion pulls AQI + weather history and merges by timestamp.
-2. Cleaned CSVs are written under `data/raw` and `data/processed`.
-3. Training generates models per horizon and logs to MLflow.
-4. Artifacts and predictions are stored in `data/artifacts` and `data/predictions`.
+## Architecture
 
-## Project layout
+```
+┌─────────────┐     ┌──────────────────────────────────────────────┐
+│  OpenWeather │────▶│  Airflow (Scheduler + Worker + API Server)   │
+│     API      │     │                                              │
+└─────────────┘     │  ┌──────────────┐   ┌───────────────────┐    │
+                    │  │ aqi_pred_dag │   │  aqi_train_dag    │    │
+                    │  │   (daily)    │   │    (monthly)      │    │
+                    │  │ ingest ─▶    │   │ preprocess ─▶     │    │
+                    │  │ preprocess ─▶│   │ tune ─▶           │    │
+                    │  │ predict      │   │ train ─▶          │    │
+                    │  └──────┬───────┘   │ evaluate          │    │
+                    │         │           └────────┬──────────┘    │
+                    └─────────┼────────────────────┼───────────────┘
+                              │                    │
+                    ┌─────────▼────────────────────▼───────────────┐
+                    │              MLflow Server                    │
+                    │   Experiment Tracking  ·  Model Registry     │
+                    │   Artifact Store (Azure Blob / local)        │
+                    └──────────────────┬───────────────────────────┘
+                                       │
+                    ┌──────────────────▼───────────────────────────┐
+                    │          Model Serving (port 5050)            │
+                    │   24-horizon pyfunc → /invocations            │
+                    └──────────────────┬───────────────────────────┘
+                                       │
+                    ┌──────────────────▼───────────────────────────┐
+                    │        Streamlit Dashboard (port 8501)        │
+                    └──────────────────────────────────────────────┘
+```
 
-- `dags/`: Airflow DAGs for ingestion and training.
-- `hourly_train_pipeline/`: Training pipeline scripts (preprocess, tune, train, eval).
-- `src/scripts/`: CLI utilities such as ingestion.
-- `data/`: Raw, processed, predictions, and artifacts.
-- `db/`: MLflow and Optuna SQLite backends when used locally.
-- `docker/`: Dockerfiles for Airflow, MLflow, and trainer images.
+## Data Flow
+
+### Training (monthly)
+1. Raw hourly CSVs are read from `data/raw/static/hourly/`.
+2. `DataCleaner` handles missing values, outliers, segmentation, and feature engineering.
+3. Processed data is split into train/val/test (70/15/15) and saved as Parquet under `data/processed/hourly/`.
+4. Optuna tunes hyperparameters; best params saved to `data/artifacts/best_params.json`.
+5. 24 XGBoost models are trained (one per horizon) and registered in MLflow Model Registry.
+6. Models passing evaluation thresholds are promoted to staging.
+7. A composite `ServeModel` wrapping all 24 models is registered as `hourly_pm25_24h_service`.
+
+### Prediction (daily)
+1. Live AQI + weather data is fetched from OpenWeather and saved as CSV in `data/raw/pred_ingestion/`.
+2. Preprocessing applies the same transformations as training and outputs Parquet to `data/processed/pred_ingestion/`.
+3. The latest `hourly_pm25_24h_service` model produces 24-hour forecasts.
+4. Predictions are saved to `data/predictions/hourly/` and optionally written to MySQL.
+
+## Project Layout
+
+```
+├── dags/                        # Airflow DAG definitions
+│   ├── pred_dag.py              #   Daily prediction pipeline
+│   ├── train_dag.py             #   Monthly training pipeline
+│   └── monitor_dag.py           #   Monitoring (placeholder)
+├── hourly_train_pipeline/       # Training pipeline scripts
+│   ├── preprocess.py            #   Raw → processed Parquet
+│   ├── tune.py                  #   Optuna hyperparameter search
+│   ├── train.py                 #   Train 24 XGBoost models
+│   ├── eval.py                  #   Evaluate & promote models
+│   └── serve.py                 #   Register composite serving model
+├── hourly_pred_pipeline/        # Prediction pipeline scripts
+│   ├── ingest.py                #   Fetch live data from OpenWeather
+│   ├── preprocess.py            #   Clean & engineer features
+│   └── pred.py                  #   Run inference & save results
+├── frontend/
+│   └── app.py                   # Streamlit dashboard
+├── src/
+│   ├── modules/                 # Shared library modules
+│   └── scripts/                 # CLI utilities & core logic
+├── docker/                      # Dockerfiles
+│   ├── dockerfile.airflow       #   Airflow image
+│   ├── Dockerfile.mlflow        #   MLflow tracking server
+│   ├── Dockerfile.trainer       #   Training container
+│   ├── dockerfile.pred          #   Prediction container
+│   └── Dockerfile.streamlit     #   Streamlit frontend
+├── azure-deploy/                # Terraform infrastructure (Azure)
+│   ├── main.tf
+│   ├── variable.tf
+│   ├── terraform.tfvars
+│   └── versions.tf
+├── config/
+│   └── airflow.cfg              # Airflow configuration
+├── data/                        # Runtime data (git-ignored)
+│   ├── raw/                     #   Raw CSVs from ingestion
+│   ├── processed/               #   Cleaned Parquet files
+│   ├── predictions/             #   Model output
+│   ├── artifacts/               #   Best params, plots
+│   └── metadata/                #   Pipeline run metadata
+├── db/                          # Local SQLite backends (git-ignored)
+├── notebooks/                   # Exploration & visualization
+├── docker-compose.yaml          # Full service orchestration
+├── setup.cfg                    # Package metadata & entry points
+├── pyproject.toml               # Build system config
+├── requirements.txt             # Python dependencies
+└── setup_data_structure.py      # Creates data directory tree
+```
 
 ## Airflow DAGs
 
-- `aqi_data_dag` (daily): pulls AQI data from OpenWeather and writes CSVs.
-- `aqi_train_dag` (monthly): preprocesses, tunes, trains, and evaluates models in Docker.
+| DAG | Schedule | Tasks | Description |
+|-----|----------|-------|-------------|
+| `aqi_pred_dag` | `@daily` | `fetch_data` → `preprocess_data` → `predict` | Ingests live data, preprocesses, and runs inference using the `aqi-prediction` Docker image |
+| `aqi_train_dag` | `@monthly` | `preprocess_data` → `tune_hyperparameters` → `train_model` → `evaluate_model` | Full retraining pipeline using the `aqi-trainer` Docker image |
+| `monitor_dag` | — | — | Placeholder for future monitoring tasks |
+
+All tasks run as **DockerOperators**, mounting the host `data/` and `db/` directories into containers. Environment variables (API keys, MLflow URI, horizon, split ratios, target columns) are passed from the Airflow environment.
 
 ## Stack
-- Airflow for orchestration
-- MLflow for model tracking
-- DVC for data versioning (Azure Blob Storage)
-- Optuna for hyperparameter tuning
-- XGBoost for model training
+
+| Component | Purpose |
+|-----------|---------|
+| **Apache Airflow** (CeleryExecutor) | DAG orchestration with PostgreSQL metadata + Redis broker |
+| **MLflow** | Experiment tracking, model registry, artifact storage |
+| **XGBoost** | Gradient-boosted tree models for AQI prediction |
+| **Optuna** | Bayesian hyperparameter optimization |
+| **DVC** | Data versioning with Azure Blob Storage remote |
+| **Docker Compose** | Multi-service container orchestration |
+| **Streamlit** | Interactive prediction dashboard |
+| **MySQL** | MLflow backend store and prediction logging |
+| **Azure Blob Storage** | MLflow artifact store and DVC remote |
+| **Terraform** | Azure infrastructure provisioning |
 
 ## Setup
 
 ### Prerequisites
 
-| Requirement        | Version   | Purpose                          |
-|--------------------|-----------|----------------------------------|
-| Python             | 3.10+     | Runtime                          |
-| Docker & Compose   | Latest    | Container orchestration          |
-| MySQL              | 8.x       | MLflow backend store             |
-| Git                | Latest    | Version control                  |
-| DVC                | 3.x       | Data versioning (Azure Blob)     |
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| Python | 3.10+ | Runtime |
+| Docker & Compose | Latest | Container orchestration |
+| MySQL | 8.x | MLflow backend store |
+| Git | Latest | Version control |
+| DVC | 3.x | Data versioning (Azure Blob) |
 
 ### 1. Clone and create virtual environment
 
@@ -131,12 +242,12 @@ python setup_data_structure.py
 mkdir -p logs db secrets
 ```
 
-| Directory  | Purpose                                | In `.gitignore` |
-|------------|----------------------------------------|:---------------:|
-| `data/`    | Raw, processed, predictions, artifacts | Yes             |
-| `logs/`    | Airflow scheduler & task logs          | Yes             |
-| `db/`      | MLflow & Optuna SQLite backends        | Yes             |
-| `secrets/` | Credential files (e.g. Azure keys)     | Yes             |
+| Directory | Purpose | In `.gitignore` |
+|-----------|---------|:---------------:|
+| `data/` | Raw, processed, predictions, artifacts | Yes |
+| `logs/` | Airflow scheduler & task logs | Yes |
+| `db/` | MLflow & Optuna SQLite backends | Yes |
+| `secrets/` | Credential files (e.g. Azure keys) | Yes |
 
 Data directory tree created by `setup_data_structure.py`:
 ```
@@ -150,9 +261,11 @@ data/
 │   └── hourly/
 ├── processed/
 │   ├── daily/
-│   └── hourly/
+│   ├── hourly/
+│   └── pred_ingestion/
 └── raw/
     ├── dynamic/
+    ├── pred_ingestion/
     └── static/
         ├── daily/
         │   ├── aqi/
@@ -169,19 +282,22 @@ cp .env.template .env
 
 Required variables in `.env`:
 
-| Variable                          | Example / Description                                                        |
-|-----------------------------------|------------------------------------------------------------------------------|
-| `OPEN_WEATHER_API_KEY`            | Your OpenWeather API key                                                     |
-| `AZURE_STORAGE_CONNECTION_STRING` | Azure Blob connection string for DVC & MLflow artifacts                      |
-| `MLFLOW_ARTIFACT_ROOT`            | `wasbs://container@account.blob.core.windows.net/` or a local path           |
-| `MYSQL_HOST`                      | `host.docker.internal` (local) or remote host                               |
-| `MYSQL_PW`                        | MySQL password                                                               |
-| `MYSQL_USER`                      | `root` or your MySQL user                                                    |
-| `MYSQLURL`                        | `mysql+pymysql://root:password@host.docker.internal:3306/mlflow_backend`     |
-| `AIRFLOW_PROJ_DIR`                | Absolute path to this repo on the host                                       |
-| `HORIZON`                         | `24` (forecast horizon in hours)                                             |
-| `TARGET_COL`                      | `pm25` (target column for training)                                          |
-| `STATION_NAME`                    | `us_paro_hourly`                                                             |
+| Variable | Example / Description |
+|----------|----------------------|
+| `OPEN_WEATHER_API_KEY` | Your OpenWeather API key |
+| `AZURE_STORAGE_CONNECTION_STRING` | Azure Blob connection string for DVC & MLflow artifacts |
+| `MLFLOW_ARTIFACT_ROOT` | `wasbs://container@account.blob.core.windows.net/` or a local path |
+| `MYSQL_HOST` | `host.docker.internal` (local) or remote host |
+| `MYSQL_PW` | MySQL password |
+| `MYSQL_USER` | `root` or your MySQL user |
+| `MYSQLURL` | `mysql+pymysql://root:password@host.docker.internal:3306/mlflow_backend` |
+| `AIRFLOW_PROJ_DIR` | Absolute path to this repo on the host |
+| `HORIZON` | `24` (forecast horizon in hours) |
+| `TARGET_COL` | `pm25` (target column for training) |
+| `TARGET_COLS` | `pm25,o3` (comma-separated list for preprocessing) |
+| `STATION_NAME` | `us_paro_hourly` |
+| `VALUE_MIN` | `0` (minimum valid AQI value) |
+| `VALUE_MAX` | `500` (maximum valid AQI value) |
 
 ### 5. MySQL setup
 
@@ -208,10 +324,10 @@ dvc pull
 ```
 
 Tracked by DVC:
-- data/raw/
-- data/processed/
-- db/mlflow.db
-- db/optuna_study.db
+- `data/raw/`
+- `data/processed/`
+- `db/mlflow.db`
+- `db/optuna_study.db`
 
 ### 7. Build and run with Docker Compose
 
@@ -219,89 +335,99 @@ Tracked by DVC:
 docker compose up --build
 ```
 
-This starts: **Airflow** (webserver + scheduler + worker), **MLflow**, **Optuna Dashboard**, **PostgreSQL** (Airflow metadata), and **Redis** (Celery broker).
+This starts the core services: **Airflow** (API server + scheduler + DAG processor + worker + triggerer), **MLflow**, **Optuna Dashboard**, **PostgreSQL** (Airflow metadata), and **Redis** (Celery broker).
 
-Run individual services:
+Run individual or optional services:
 ```bash
-docker compose up mlflow           # MLflow only
-docker compose up optuna-server    # Optuna dashboard only
+docker compose up mlflow                       # MLflow only
+docker compose up optuna-server                # Optuna dashboard only
+docker compose --profile manual up trainer     # Training container
+docker compose --profile manual up prediction  # Prediction container
+docker compose --profile manual up streamlit   # Streamlit dashboard
+docker compose --profile flower up flower      # Celery Flower monitoring
 ```
 
-## Port Rules
+## Port Reference
 
-| Port | Service              | Description                              |
-|------|----------------------|------------------------------------------|
-| 5000 | MLflow Tracking      | MLflow tracking server UI and API        |
-| 5050 | MLflow Model Serving | MLflow model serving REST endpoint       |
-| 8080 | Airflow API Server   | Airflow web UI and REST API              |
-| 8081 | Optuna Dashboard     | Optuna hyperparameter tuning dashboard   |
+| Port | Service | Description |
+|------|---------|-------------|
+| 5000 | MLflow Tracking | Tracking server UI and API |
+| 5050 | MLflow Model Serving | Model serving REST endpoint (`/invocations`) |
+| 5555 | Flower | Celery worker monitoring (optional, `--profile flower`) |
+| 8080 | Airflow API Server | Airflow web UI and REST API |
+| 8081 | Optuna Dashboard | Hyperparameter tuning dashboard |
+| 8501 | Streamlit | AQI prediction dashboard (optional, `--profile manual`) |
 
-> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **8080** (Airflow), **8081** (Optuna), and **5050** (Model Serving) in your security group.
+> **Cloud inbound rules**: Open ports **22** (SSH), **5000** (MLflow), **5050** (Model Serving), **8080** (Airflow), **8081** (Optuna), and **8501** (Streamlit) in your security group.
 
 ## MLflow
 
-The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000. You can set up mlflow locally for development with a local SQLite backend by changing the `MLFLOW_ARTIFACT_ROOT` to local path and `MYSQLURI` to a .SQLITE db locally in `.env` and running the mlflow server locally.
+The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000. For local development, you can switch to a SQLite backend by changing `MYSQLURL` to a local `.sqlite` path and `MLFLOW_ARTIFACT_ROOT` to a local directory in `.env`.
 
 MLflow stores:
 - Parameters and metrics for each training run
-- Optuna tuning results
-- Models registered per horizon
+- Optuna tuning results (via `MLflowCallback`)
+- Registered models per horizon (`pm25_plus_{h}h_model`)
+- Composite serving model (`hourly_pm25_24h_service`)
 
 ## Training Pipeline
 
-Hourly training runs per horizon (1-24) with separate models and tuning. Pipeline scripts live under `hourly_train_pipeline/`.
+Hourly training runs per horizon (1–24) with separate models and tuning. Pipeline scripts live under `hourly_train_pipeline/`.
 
-Key environment variables:
+Key environment variables (set in `.env`):
 ```bash
-export TARGET_COLS="pm25,o3,pm10"  # comma-separated list for preprocessing
-export TARGET_COL="pm25"           # target for training
-export VALUE_MIN=0
-export VALUE_MAX=500
-export HORIZON=24
+TARGET_COLS="pm25,o3"    # comma-separated list for preprocessing
+TARGET_COL="pm25"        # target for training
+VALUE_MIN=0
+VALUE_MAX=500
+HORIZON=24
 ```
-should be set on `.env` file
 
 ### Preprocessing
-`.preprocess.py` reads raw CSVs, applies transformations, and writes processed parquet on `/data/processed/..`.
-This utilizes local libraries under `src/` for data cleaning and feature engineering, more on dependancy graph. The key preprocessing steps include:
+`preprocess.py` reads raw CSVs, applies transformations via `DataCleaner`, and writes processed Parquet to `data/processed/hourly/`. Key steps:
 - Handling missing values (imputation or dropping)
-- segmentation by missing values to avoid leakage
-- outlier detection and capping
-- Feature engineering (lag features, rolling stats, time-based features)
-more on detail on  `/notebooks/preprocessing.ipynb`
+- Segmentation by missing-value gaps to avoid data leakage
+- Outlier detection and capping
+- Feature engineering (lag features, rolling statistics, time-based features)
+- Train/val/test split (70/15/15 by default)
+- Shifted target column creation for all horizons (1–24h ahead)
+
+Output: `train_processed.parquet`, `val_processed.parquet`, `test_processed.parquet`
 
 ### Tuning
-`.tune.py` runs Optuna to find the best hyperparameters for the XGBoost model per horizon. Results are logged to MLflow. This utilizes the Optuna integration with MLflow to track tuning experiments. `/src/train_houly.py` contains the training logic and is called by both tuning and training scripts, while `tune` is the wrapper. The best hyperparameters are saved to a JSON file under `data/artifacts/` for use in the training step.
+`tune.py` runs Optuna (default 60 trials) to find optimal XGBoost hyperparameters. Results are logged to the `xgb_aqi_hourly_tuning` MLflow experiment via `MLflowCallback`. The best parameters are saved to `data/artifacts/best_params.json`. Optuna study state is persisted in a SQLite database (`db/optuna.db`).
 
 ### Training
-
-`.train.py` trains the final model using the best hyperparameters found in tuning. The trained model is logged to MLflow and saved as a pickle file under `data/artifacts/`. After training the model is registered in MLflow Model Registry under a name like `aqi_model_horizon_{HORIZON}`.
-
-
-
+`train.py` trains 24 XGBoost models using the best hyperparameters from tuning. Each model is trained for a specific forecast horizon (1–24h ahead) and:
+- Logged as a separate MLflow run with parameters and metrics
+- Registered in MLflow Model Registry as `pm25_plus_{h}h_model`
 
 ### Evaluation
-`.eval.py` evaluates the trained model on a holdout test set and logs metrics to MLflow. Evaluation results are also saved as JSON under `data/artifacts/` and predictoin on `data/predictions`. The mlflow is modeled to log the evaluation metrics under the same run as training, so you can see the full picture of training and evaluation in one place. The follwoing are the requirements for promotion:
-- MAE < 20
-- RMESE <30
+`eval.py` evaluates all 24 trained models on the holdout test set using `mlflow.models.evaluate()`. Models passing the following thresholds are promoted to **staging**:
+- MAE < 25
+- RMSE < 40
 
-Example runs:
+Combined predictions are saved to `data/predictions/hourly/`. Per-horizon and aggregate metrics are logged to MLflow and recorded in pipeline metadata.
+
+### Serving
+`serve.py` registers a composite **custom `pyfunc` model** (`ServeModel`) that wraps all 24 horizon models into a single MLflow endpoint. On inference, it runs all 24 models and returns predictions in columns `pm25_plus_1h_pred` through `pm25_plus_24h_pred`.
+
+The model is registered as `hourly_pm25_24h_service` in MLflow Model Registry.
+
+By default, `docker-compose.yaml` starts the model serving via the `model-serve` service on port **5050**. The endpoint is `http://localhost:5050/invocations`.
+
+Start serving locally via CLI:
 ```bash
-python hourly_train_pipeline/preprocess.py 
+mlflow models serve --model-uri models:/hourly_pm25_24h_service/latest --host 0.0.0.0 --port 5050 --no-conda
+```
+
+Example pipeline run (local):
+```bash
+python hourly_train_pipeline/preprocess.py
 python hourly_train_pipeline/tune.py
 python hourly_train_pipeline/train.py
 python hourly_train_pipeline/eval.py
 python hourly_train_pipeline/serve.py
-```
-
-### Serving
-`serve.py` serves the selected model using MLflow's built-in model serving capabilities. The model is loaded from MLflow Model Registry and exposed via a REST API endpoint. This utilize custom pyfunc model that combines all the 24 horizon models into one endpoint, where you can specify the horizon as a query parameter. 
-
-By default `docker-compose.yaml` automatically starts the model serving through `serve` service. The defualt port is set to 5050, and end points is `http://Localhost:5050/invocations`. 
-
-Or Start the serving endpoint locally through CLI:
-```bash
-mlflow models serve --model-uri models:/hourly_pm25_24h_service/latest --host 0.0.0.0 --port 5050 --no-conda
 ```
 
 #### Usage example (from processed data)
@@ -352,28 +478,99 @@ The response returns predictions for all 24 horizons:
 
 > **Tip**: The Python approach using processed data is recommended — it guarantees columns and types match the model signature exactly.
 
+## Prediction Pipeline
 
+The daily prediction pipeline runs as the `aqi_pred_dag` Airflow DAG and produces live AQI forecasts. Scripts live under `hourly_pred_pipeline/`.
+
+### Ingestion
+`ingest.py` fetches current AQI data from the OpenWeather API with a configurable lookback (default 24h). Data is saved as a dated CSV under `data/raw/pred_ingestion/`. Pipeline metadata (success/failure) is recorded to `data/metadata/ingestion.json`.
+
+### Preprocessing
+`preprocess.py` reads the ingested CSV and applies the same `DataCleaner` transformations used during training: time features, missing-value flags, gap length computation, segmentation, and feature engineering. Output is saved as Parquet in `data/processed/pred_ingestion/`.
+
+### Prediction
+`pred.py` loads the latest version of `hourly_pm25_24h_service` from MLflow Model Registry, runs inference on the most recent preprocessed row, and produces 24-hour forecasts. Predictions are:
+- Saved as CSV to `data/predictions/hourly/`
+- Optionally written to the `hourly_predictions` MySQL table
+- Logged to the `xgb_aqi_hourly_prediction` MLflow experiment
+
+Example pipeline run (local):
+```bash
+python hourly_pred_pipeline/ingest.py
+python hourly_pred_pipeline/preprocess.py
+python hourly_pred_pipeline/pred.py
+```
+
+## Frontend
+
+A **Streamlit** dashboard (`frontend/app.py`) provides a visual interface for AQI predictions:
+- **City selector** — choose from configured stations
+- **Horizon slider** — select forecast horizon (1–24h)
+- **AQI metric display** — shows the predicted value
+- **Trend chart** — visualizes prediction trends over time
+
+Run locally:
+```bash
+streamlit run frontend/app.py
+```
+
+Or via Docker Compose:
+```bash
+docker compose --profile manual up streamlit
+```
+
+The dashboard is available at http://localhost:8501.
+
+## Azure Deployment
+
+Infrastructure-as-code for Azure is in `azure-deploy/` using Terraform:
+- **Resource group** and **Virtual Network** provisioning
+- Configured via `terraform.tfvars` and `variable.tf`
+- Uses Azure CLI for provider authentication
+
+```bash
+cd azure-deploy
+terraform init
+terraform plan
+terraform apply
+```
 
 ## Development (editable install)
 
 ```sh
-.venv/scripts/python.exe -m pip install -e .
+pip install -e .
 ```
+
+This exposes CLI entry points defined in `setup.cfg`:
+- `aqi-ingest`
+- `aqi-train`
+- `data_hourly_preprocessing`
 
 To undo:
 ```sh
-python -m pip uninstall pypipeline
+pip uninstall pypipeline
 ```
 
 ## Notebooks
 
-Experiments and visuals live under `/notebooks`.
+Exploration and visualization notebooks live under `notebooks/`:
+
+| Notebook | Purpose |
+|----------|---------|
+| `datapreprocess(limited).ipynb` | Data preprocessing exploration |
+| `houlry_train.ipynb` | Hourly model training experiments |
+| `aqi_calculation.ipynb` | AQI calculation methodology |
+| `plots.ipynb` | Model performance plots |
+| `pred.ipynb` | Prediction experimentation |
+| `visuals.ipynb` | Data visualizations |
 
 ## Secrets
 
-Store secrets in `.env`. Example:
+Store all secrets in `.env` (git-ignored). Required credentials:
 ```
 OPEN_WEATHER_API_KEY=...
+AZURE_STORAGE_CONNECTION_STRING=...
+MYSQL_PW=...
 ```
 
-You may also need Azure Blob Storage credentials for DVC and MLflow artifacts.
+For Azure Blob Storage, the connection string can also be placed in `secrets/azure_storage_connection_string.txt` for services that read from file.
