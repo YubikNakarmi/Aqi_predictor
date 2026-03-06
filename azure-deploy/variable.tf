@@ -25,5 +25,5 @@ variable "admin-name" {
 variable "my-ip" {
     description = "Your public IP address for NSG rule (CIDR format)"
     type        = string
-    default     = "27.34.67.79/32"
+    default     = "0.0.0.0/0"
 }

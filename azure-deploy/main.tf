@@ -1,7 +1,9 @@
 provider "azurerm" {
-    features {}# Automatically authenticates, using azure cli (az login) for credentials
-    resource_provider_registrations = "none"
-  
+    
+  features {}
+  resource_provider_registrations = "none"
+
+ 
 }
 
 resource "azurerm_resource_group" "rg" {
@@ -151,4 +153,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
     }
 
     custom_data = filebase64("${path.module}/setup.sh") #cloud init script to install docker and start the container
+
+    lifecycle {
+      ignore_changes = [custom_data]
+    }
 }
