@@ -31,7 +31,7 @@ resource "azurerm_public_ip" "pip" {
     name = "${var.resource_group_name}-pip"
     location = azurerm_resource_group.rg.location
     resource_group_name = azurerm_resource_group.rg.name
-    allocation_method = "Dynamic" #dynamic ip to reduce cost
+    allocation_method = "Static" #Standard SKU requires static allocation
   
 }
 
@@ -136,8 +136,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
     network_interface_ids = [azurerm_network_interface.nic.id]
 
     admin_ssh_key {
-      username = "admin"
-      public_key =  file("~/.ssh/id_ed25519.pub") #using existing ssh key for authenticationls
+      username = var.admin-name
+      public_key =  file("~/.ssh/id_ed25519.pub") #using existing ssh key for authentication
     }
     os_disk {
         caching = "ReadWrite"
@@ -145,8 +145,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
     }
     source_image_reference {
         publisher = "Canonical"
-        offer = "UbuntuServer"
-        sku = "24.04-LTS"
+        offer = "ubuntu-24_04-lts"
+        sku = "server"
         version = "latest"
     }
 

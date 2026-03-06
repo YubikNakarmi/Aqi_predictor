@@ -23,7 +23,7 @@ variable "admin-name" {
 }
 
 variable "my-ip" {
-    description = "Your public IP address for NSG rule"
+    description = "Your public IP address for NSG rule (CIDR format)"
     type        = string
-    default     = "myip"
+    default     = "27.34.67.79/32"
 }
