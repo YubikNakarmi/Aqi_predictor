@@ -155,7 +155,7 @@ services:
     mem_limit: 1g
 
 
-  # MLflow service (uses sqlite backend at ./db/mlflowdb and stores artifacts under azure)
+  
   mlflow:
     build:
       context: .
@@ -167,18 +167,16 @@ services:
     ports:
       - "5000:5000"
     command:
-      - mlflow
-      - server
-      - --backend-store-uri
-      - ${MYSQLURL} #local mysql, host.docker.internal to specifiy machine host
-      - --default-artifact-root
-      - ${MLFLOW_ARTIFACT_ROOT} #azure blob storage
-      - --host
-      - 0.0.0.0
-      - --allowed-hosts
-      - "*"
-      - --port
-      - "5000"
+      - sh
+      - -c
+      - >-
+        mlflow db upgrade "${MYSQLURL_REMOTE}" &&
+        mlflow server
+        --backend-store-uri "${MYSQLURL_REMOTE}"
+        --default-artifact-root "${MLFLOW_ARTIFACT_ROOT}"
+        --host 0.0.0.0
+        --allowed-hosts "*"
+        --port 5000
     networks:
       - aqi_network
     restart: unless-stopped
