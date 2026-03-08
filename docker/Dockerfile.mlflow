@@ -7,7 +7,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
-    mlflow[aws,azure,gcp] \
+    mlflow[aws,azure,gcp]==3.10.1 \
     azure-storage-blob \
-    azure-identity\
+    azure-identity \
     pymysql \
+    cryptography
+
+EXPOSE 5000
+
+CMD ["sh", "-c", "mlflow db upgrade ${BACKEND_STORE_URI} && mlflow server --backend-store-uri ${BACKEND_STORE_URI} --default-artifact-root ${ARTIFACT_ROOT} --host 0.0.0.0 --port 5000"]
