@@ -14,7 +14,7 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B?logo=streamlit&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-IaC-844FBA?logo=terraform&logoColor=white)
 
-[![Pylint](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml/badge.svg?branch=test)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/pylint.yml)
+[![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
 
 **An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.**
 
