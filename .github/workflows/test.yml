@@ -52,6 +52,7 @@ jobs:
   cml-report:
     runs-on: ubuntu-latest
     needs: ml-tests
+    if: github.event_name == 'pull_request'
    
 
     steps:
