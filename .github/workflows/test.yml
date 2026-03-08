@@ -119,28 +119,17 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Reset MLflow DB migration state
         env:
           MLFLOW_DB_URI: ${{ secrets.MYSQL_MLFLOW_URL }}
-        run: |
-          python -c "
-          import os
-          from sqlalchemy import create_engine, text
-          engine = create_engine(os.environ['MLFLOW_DB_URI'])
-          with engine.connect() as conn:
-              conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
-              conn.commit()
-          print('Reset alembic_version — MLflow will re-initialize on startup')
-          "
 
       - name: Start MLflow server
         run: |
-          mlflow server \
+           mlflow db upgrade "${{secrets.MYSQL_MLFLOW_URL}}" && mlflow server \
             --backend-store-uri ${{ secrets.MYSQL_MLFLOW_URL }} \
             --default-artifact-root ${{secrets.MLFLOW_ARTIFACT_URI}} \
             --host 127.0.0.1 \
             --port 5000 &
-          sleep 10
+              sleep 10
 
       - name: MLflow connectivity check
         run: |
