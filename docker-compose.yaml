@@ -239,8 +239,8 @@ services:
       - aqi_network
     profiles:
       - manual
-    mem_limit: 3g
-    memswap_limit: 3g
+    mem_limit: 5g
+    memswap_limit: 5g
   
   prediction:
     build:

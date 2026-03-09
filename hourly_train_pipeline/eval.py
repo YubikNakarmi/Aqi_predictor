@@ -18,7 +18,7 @@ TARGET_COL = os.getenv("TARGET_COL", "pm25")
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro_hourly")
-TRAIN_METADATA_FILE = os.getenv("TRAIN_METADATA_FILE", "data/metadata/train.json")
+EVAL_METADATA_FILE = os.getenv("EVAL_METADATA_FILE", "data/metadata/eval.json")
 logger = setup_logging(__name__)
 
 
@@ -37,7 +37,7 @@ def mlflow_sanity_check() -> bool:
 
 
 def main():
-    metadata_file = TRAIN_METADATA_FILE
+    metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
     promoted_models = []
 

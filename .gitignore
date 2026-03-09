@@ -16,3 +16,4 @@ ec2.pem
 .terraform*
 terraform.tfstate
 terraform.tfstate.backup
+tempCodeRunnerFile.py

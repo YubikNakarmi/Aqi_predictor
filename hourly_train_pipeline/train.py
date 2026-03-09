@@ -15,6 +15,7 @@ ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 TARGET_COL = os.getenv("TARGET_COL", "pm25")  # Default to pm25, can be "o3" or others
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
+TRAINING_METADATA_FILE = os.getenv("TRAINING_METADATA_FILE", "data/metadata/train.json")
 
 logger = setup_logging(__name__)
 
@@ -31,7 +32,7 @@ def mlflow_sanity_check()->bool:
         raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
         
 def main():
-    metadata_file = "data/metadata/train.json"
+    metadata_file = TRAINING_METADATA_FILE
 
     try:
         if mlflow_sanity_check() is False:
