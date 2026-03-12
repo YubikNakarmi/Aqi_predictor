@@ -1,13 +1,12 @@
 import os
 import datetime
 from datetime import timezone
-
 import mlflow
 import pandas as pd
 import xgboost as xgb
 from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
-
+import shap
 from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
 from train import HORIZON, TARGET_COL
@@ -66,6 +65,7 @@ def main():
 
         for h in range(1, HORIZON + 1):
             with mlflow.start_run(run_name=f"final_{TARGET_COL}_evaluation_{h}h"):
+                ''' load data and models'''
                 model_uri = f"models:/pm25_plus_{h}h_model/latest"#mlflow uri for model
                 model = mlflow.xgboost.load_model(model_uri)
                 target_key = f"{TARGET_COL}_plus_{h}h" #target pm25
@@ -80,6 +80,7 @@ def main():
                     & (df_test[target_key] <= VALUE_MAX)
                 )
 
+                ''' preprocessing stps'''
                 if "date" in df_test.columns:
                     date_series = df_test.loc[:, "date"]#if date column exists, use it as date series for evaluation dataframe
                 else:
@@ -89,6 +90,7 @@ def main():
                 X = df_test.loc[test_mask].drop(features_exclude, axis=1).copy()
                 y = df_test.loc[test_mask, target_key]
 
+                ''' predictionss and evals'''
                 X_dmatrix = xgb.DMatrix(X)
                 y_pred = model.predict(X_dmatrix)
                 logger.info("Predictions for horizon %sh completed.", h)
@@ -96,7 +98,7 @@ def main():
                 eval_df = pd.DataFrame({"prediction": y_pred, "target": y})
                 mlflow.set_tag("horizon", f"{h}h")
 
-                horizon_predictions.append(
+                horizon_predictions.append(#appending preictoins
                     pd.DataFrame(
                         {
                             "date": filtered_dates.values,
@@ -110,8 +112,36 @@ def main():
                 prediction_df = eval_df.copy()
                 prediction_df["date"] = filtered_dates.values
                 prediction_df.to_csv(prediction_path, index=False)
+
                 mlflow.log_artifact(prediction_path, artifact_path="prediction")
                 os.remove(prediction_path)
+
+
+                ''' shap values '''
+                X_bg = X.sample(n=min(300, len(X)), random_state=42)
+                X_explain = X.sample(n=min(300, len(X)), random_state=42)
+
+                explainer = shap.Explainer(model, X_bg)
+                shap_values = explainer(X_explain)
+
+                bar = shap.plots.bar(shap_values, max_display=10)
+                beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
+                waterfall = shap.plots.waterfall(shap_values[0])
+                feature_names = X_explain.columns[0]
+                scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
+                ''' not saving png because to save space on azure cloud'''
+                # mlflow.log_figure(bar, artifact_file=f"shap_bar_{h}h.png")
+                # mlflow.log_figure(beeswarm, artifact_file=f"shap_beeswarm_{h}h.png")
+                # mlflow.log_figure(waterfall, artifact_file=f"shap_waterfall_{h}h.png")
+                # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png")  
+
+                
+                mlflow.log_artifact(X_bg.to_csv(index=False), artifact_path=f"shap_bg_{h}h.csv")
+                mlflow.log_artifact(X_explain.to_csv(index=False), artifact_path=f"shap_explain_{h}h.csv")
+
+
+
+                ''' threshold checking and promotoin'''
 
                 threshold = {
                     "mean_absolute_error": MetricThreshold(threshold=25.0, greater_is_better=False),
@@ -160,13 +190,17 @@ def main():
                         logger.warning("Could not find model version for %s", model_name)
                 except mlflow.exceptions.MlflowException as exc:
                     logger.info("Validation threshold check failed: %s", exc)
-
+                
+                '''metadata store for each horizon'''
                 evaluation_metrics.append(
                     {
                         "horizon": h,
                         "target_key": target_key,
                         "mae": result.metrics.get("mean_absolute_error"),
                         "rmse": result.metrics.get("root_mean_squared_error"),
+                        "features": X.columns.tolist(),
+                        "background_samples_location": f"shap_bg_{h}h.csv",
+                        "explain_samples_location": f"shap_explain_{h}h.csv",
                     }
                 )
 
@@ -176,6 +210,7 @@ def main():
                         file.write("\n".join(X.columns.tolist()))
                     mlflow.log_artifact(feature_file, artifact_path="features")
                     os.remove(feature_file)
+        ''' saving '''
 
         if horizon_predictions:
             preds_df = horizon_predictions[0].set_index("date")
@@ -206,7 +241,7 @@ def main():
             if evaluation_metrics
             else None
         )
-
+        ''' final metadata store'''
         update_pipeline_metadata(
             metadata_file,
             {
