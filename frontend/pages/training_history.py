@@ -6,13 +6,20 @@ import json
 import os
 import datetime
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
 TRAINING_METADATA_FILE = os.getenv(
     "TRAINING_METADATA_FILE",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "metadata", "train.json"),
+    os.path.join(PROJECT_ROOT, "data", "metadata", "train.json"),
+)
+PREDICTIONS_FILE = os.getenv(
+    "PREDICTIONS_DIR",
+    os.path.join(PROJECT_ROOT, "data", "predictions", "hourly", "us_paro_hourly", "test", "hourly_pm25_predictions.csv"),
 )
 
 
-st.set_page_config(page_title="Training History", layout="centered")
+st.set_page_config(page_title="Training & Evaluation History", layout="wide")
+tab1, tab2 = st.tabs(["Training History", "Evaluation History"])
 
 @st.cache_data
 def load_training_metadata():
@@ -29,27 +36,38 @@ def load_training_metadata():
         "runs": runs,
     }
 
-try: 
-    metadata = load_training_metadata()
-    if metadata:
-        st.title("Training History")
-        run_date = datetime.datetime.fromisoformat(metadata['run_date'])
-        st.write(f"**Last Training Run Date (UTC):** {run_date}")
-        st.write(f"**Horizon:** {metadata['horizon']} hours")
-        st.write("### Metrics Summary:")
-        st.write(metadata["metrics_summary"])
-        h = [run["horizon"] for run in metadata["runs"]]
-        mae = [run["val_mae"] for run in metadata["runs"]]
-        rmse = [run["val_rmse"] for run in metadata["runs"]]
-        st.write("### Metrics by Horizon:")
-        df = pd.DataFrame({
-            "Horizon (hours)": h,
-            "Validation MAE": mae,
-            "Validation RMSE": rmse
-        })
-        st.dataframe(df)
-        st.line_chart(df.set_index("Horizon (hours)")[["Validation MAE", "Validation RMSE"]])
+@st.cache_data
+def load_eval_metadata():
+    preds = pd.read_csv(PREDICTIONS_FILE)
+    
+    return preds
 
-except Exception as e:
-    st.error(f"Error loading training metadata: {e}")
-   
+@st.cache_data
+def load_mlflow_data():
+    pass
+
+with tab1:
+    try: 
+        metadata = load_training_metadata()
+        if metadata:
+            st.title("Training History")
+            run_date = datetime.datetime.fromisoformat(metadata['run_date'])
+            st.write(f"**Last Training Run Date (UTC):** {run_date}")
+            st.write(f"**Horizon:** {metadata['horizon']} hours")
+            st.write("### Metrics Summary:")
+            st.write(metadata["metrics_summary"])
+            h = [run["horizon"] for run in metadata["runs"]]
+            mae = [run["val_mae"] for run in metadata["runs"]]
+            rmse = [run["val_rmse"] for run in metadata["runs"]]
+            st.write("### Metrics by Horizon:")
+            df = pd.DataFrame({
+                "Horizon (hours)": h,
+                "Validation MAE": mae,
+                "Validation RMSE": rmse
+            })
+            st.dataframe(df)
+            st.line_chart(df.set_index("Horizon (hours)")[["Validation MAE", "Validation RMSE"]])
+
+    except Exception as e:
+        st.error(f"Error loading training metadata: {e}")
+    

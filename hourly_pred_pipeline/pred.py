@@ -113,6 +113,7 @@ def pred():
             output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
             prediction.to_csv(output_file, index=False)
             logger.info("Prediction saved to %s", output_file)
+            mlflow.log_artifact(output_file, artifact_path="predictions")#log prediction to mlflow
 
             if PRED_MYSQLURI:#check if MySQL URI is provided, if yes write to MySQL
                 mysql_utils.write_dataframe_to_mysql(prediction, table_name="hourly_predictions", if_exists="append")

@@ -671,6 +671,8 @@ MYSQL_PW=...
 For Azure Blob Storage, the connection string can also be placed in `secrets/azure_storage_connection_string.txt` for services that read from file.
 
 ---
+# Improvements
+- Use a more robust data for training, currently only aqi data with large gaps is used, which is not ideal for training a good model. A more complete dataset with fewer gaps would improve model performance. Additonally use weather data as features, which are currently not used but could provide valuable information for AQI prediction.
 
 # Credits
 - [Training data source](https://opendatanepal.com/datasets/air-quality-data-in-kathmandu)

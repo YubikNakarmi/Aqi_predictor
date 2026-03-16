@@ -196,6 +196,7 @@ def main():
                     {
                         "horizon": h,
                         "target_key": target_key,
+                        "run_id": mlflow.active_run().info.run_id,
                         "mae": result.metrics.get("mean_absolute_error"),
                         "rmse": result.metrics.get("root_mean_squared_error"),
                         "features": X.columns.tolist(),
