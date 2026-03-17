@@ -39,7 +39,6 @@ def mlflow_sanity_check() -> bool:
         )
 
 
-    
 def main():
     metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
@@ -118,7 +117,6 @@ def main():
                 prediction_df["date"] = filtered_dates.values
                 prediction_df.to_csv(prediction_path, index=False)
 
-                mlflow.log_artifact(prediction_path, artifact_path="prediction")
                 os.remove(prediction_path)
 
 
@@ -126,21 +124,26 @@ def main():
                 X_bg = X.sample(n=min(300, len(X)), random_state=42)
                 X_explain = X.sample(n=min(300, len(X)), random_state=42)
 
-                explainer = shap.Explainer(model, X_bg)
-                shap_values = explainer(X_explain)
+                # explainer = shap.Explainer(model, X_bg)
+                # shap_values = explainer(X_explain)
 
-                bar = shap.plots.bar(shap_values, max_display=10)
-                beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
-                waterfall = shap.plots.waterfall(shap_values[0])
-                feature_names = X_explain.columns[0]
-                scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
+                # bar = shap.plots.bar(shap_values, max_display=10)
+                # beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
+                # waterfall = shap.plots.waterfall(shap_values[0])
+                # feature_names = X_explain.columns[0]
+                # scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
                 ''' not saving png because to save space on azure cloud'''
                 # mlflow.log_figure(bar, artifact_file=f"shap_bar_{h}h.png")
                 # mlflow.log_figure(beeswarm, artifact_file=f"shap_beeswarm_{h}h.png")
                 # mlflow.log_figure(waterfall, artifact_file=f"shap_waterfall_{h}h.png")
                 # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png") 
-                mlflow.log_artifact(X_bg.to_csv(index=False), artifact_path=f"shap_bg_{h}h.csv")
-                mlflow.log_artifact(X_explain.to_csv(index=False), artifact_path=f"shap_explain_{h}h.csv")
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    background_file = os.path.join(temp_dir, f"shap_bg_{h}h.csv")
+                    explain_file = os.path.join(temp_dir, f"shap_explain_{h}h.csv")
+                    X_bg.to_csv(background_file, index=False)
+                    X_explain.to_csv(explain_file, index=False)
+                    mlflow.log_artifact(background_file, artifact_path="shap")
+                    mlflow.log_artifact(explain_file, artifact_path="shap")
 
 
 
@@ -203,8 +206,8 @@ def main():
                         "mae": result.metrics.get("mean_absolute_error"),
                         "rmse": result.metrics.get("root_mean_squared_error"),
                         "features": X.columns.tolist(),
-                        "background_samples_location": f"shap_bg_{h}h.csv",
-                        "explain_samples_location": f"shap_explain_{h}h.csv",
+                        "background_samples_location": f"shap/shap_bg_{h}h.csv",
+                        "explain_samples_location": f"shap/shap_explain_{h}h.csv",
                     }
                 )
 
@@ -214,6 +217,7 @@ def main():
                         file.write("\n".join(X.columns.tolist()))
                     mlflow.log_artifact(feature_file, artifact_path="features")
                     os.remove(feature_file)
+
         ''' saving predictions'''
         if horizon_predictions:
             preds_df = horizon_predictions[0].set_index("date")
@@ -232,11 +236,10 @@ def main():
             index=False,mode="a"
         )
 
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".csv") as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".csv") as tmp_file:
             preds_df.to_csv(tmp_file.name, index=False)
             mlflow.log_artifact(tmp_file.name, artifact_path="predictions")
     
-
         ''' for metadata'''
         avg_mae = (
             sum(item["mae"] for item in evaluation_metrics if item["mae"] is not None)
