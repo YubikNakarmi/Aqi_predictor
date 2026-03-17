@@ -38,8 +38,7 @@ def load_training_metadata():
 
 @st.cache_data
 def load_eval_metadata():
-    preds = pd.read_csv(PREDICTIONS_FILE)
-    
+    payload
     return preds
 
 @st.cache_data
@@ -70,4 +69,7 @@ with tab1:
 
     except Exception as e:
         st.error(f"Error loading training metadata: {e}")
+
+with tab2:
+
     

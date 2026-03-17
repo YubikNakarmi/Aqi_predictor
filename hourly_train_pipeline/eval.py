@@ -1,3 +1,5 @@
+''' NEEDS REFACTORING TO MAKE IT MORE MODULAR USING FUNCTIONS'''
+
 import os
 import datetime
 from datetime import timezone
@@ -9,6 +11,8 @@ from mlflow.models import MetricThreshold
 import shap
 from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
+import tempfile
+
 from train import HORIZON, TARGET_COL
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -35,6 +39,7 @@ def mlflow_sanity_check() -> bool:
         )
 
 
+    
 def main():
     metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
@@ -133,9 +138,7 @@ def main():
                 # mlflow.log_figure(bar, artifact_file=f"shap_bar_{h}h.png")
                 # mlflow.log_figure(beeswarm, artifact_file=f"shap_beeswarm_{h}h.png")
                 # mlflow.log_figure(waterfall, artifact_file=f"shap_waterfall_{h}h.png")
-                # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png")  
-
-                
+                # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png") 
                 mlflow.log_artifact(X_bg.to_csv(index=False), artifact_path=f"shap_bg_{h}h.csv")
                 mlflow.log_artifact(X_explain.to_csv(index=False), artifact_path=f"shap_explain_{h}h.csv")
 
@@ -211,8 +214,7 @@ def main():
                         file.write("\n".join(X.columns.tolist()))
                     mlflow.log_artifact(feature_file, artifact_path="features")
                     os.remove(feature_file)
-        ''' saving '''
-
+        ''' saving predictions'''
         if horizon_predictions:
             preds_df = horizon_predictions[0].set_index("date")
             for item in horizon_predictions[1:]:
@@ -227,9 +229,15 @@ def main():
         os.makedirs(predictions_out_dir, exist_ok=True)
         preds_df.to_csv(
             os.path.join(predictions_out_dir, f"hourly_{TARGET_COL}_predictions.csv"),
-            index=False,
+            index=False,mode="a"
         )
 
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".csv") as tmp_file:
+            preds_df.to_csv(tmp_file.name, index=False)
+            mlflow.log_artifact(tmp_file.name, artifact_path="predictions")
+    
+
+        ''' for metadata'''
         avg_mae = (
             sum(item["mae"] for item in evaluation_metrics if item["mae"] is not None)
             / len(evaluation_metrics)
@@ -241,7 +249,10 @@ def main():
             / len(evaluation_metrics)
             if evaluation_metrics
             else None
+
         )
+
+
         ''' final metadata store'''
         update_pipeline_metadata(
             metadata_file,
