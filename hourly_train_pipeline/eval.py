@@ -12,6 +12,7 @@ import shap
 from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
 import tempfile
+import matplotlib.pyplot as plt
 
 from train import HORIZON, TARGET_COL
 
@@ -22,6 +23,8 @@ VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro_hourly")
 EVAL_METADATA_FILE = os.getenv("EVAL_METADATA_FILE", "data/metadata/eval.json")
+IMAGE_ARTIFACT_DIR = os.getenv("IMAGE_ARTIFACT_DIR", "data/artifacts/hourly/us_paro/shap")
+
 logger = setup_logging(__name__)
 
 
@@ -124,26 +127,41 @@ def main():
                 X_bg = X.sample(n=min(300, len(X)), random_state=42)
                 X_explain = X.sample(n=min(300, len(X)), random_state=42)
 
-                # explainer = shap.Explainer(model, X_bg)
-                # shap_values = explainer(X_explain)
+                explainer = shap.Explainer(model, X_bg)
+                shap_values = explainer(X_explain)
+                ts = datetime.datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-                # bar = shap.plots.bar(shap_values, max_display=10)
-                # beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
-                # waterfall = shap.plots.waterfall(shap_values[0])
-                # feature_names = X_explain.columns[0]
-                # scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
+
+                bar = shap.plots.bar(shap_values, max_display=10,show=False)
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_bar_{h}h.png"))
+
+                beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_beeswarm_{h}h.png"))
+
+                waterfall = shap.plots.waterfall(shap_values[0])
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_waterfall_{h}h.png"))
+                feature_names = X_explain.columns[0]
+                
+                scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_scatter_{h}h.png"))
+
+                
                 ''' not saving png because to save space on azure cloud'''
                 # mlflow.log_figure(bar, artifact_file=f"shap_bar_{h}h.png")
                 # mlflow.log_figure(beeswarm, artifact_file=f"shap_beeswarm_{h}h.png")
                 # mlflow.log_figure(waterfall, artifact_file=f"shap_waterfall_{h}h.png")
                 # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png") 
+
+
                 with tempfile.TemporaryDirectory() as temp_dir:
                     background_file = os.path.join(temp_dir, f"shap_bg_{h}h.csv")
                     explain_file = os.path.join(temp_dir, f"shap_explain_{h}h.csv")
                     X_bg.to_csv(background_file, index=False)
                     X_explain.to_csv(explain_file, index=False)
                     mlflow.log_artifact(background_file, artifact_path="shap")
+                    logger.info("SHAP background samples for horizon %sh logged to MLflow.", h)
                     mlflow.log_artifact(explain_file, artifact_path="shap")
+                    logger.info("SHAP explain samples for horizon %sh logged to MLflow.", h)
 
 
 
@@ -236,9 +254,18 @@ def main():
             index=False,mode="a"
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".csv") as tmp_file:
-            preds_df.to_csv(tmp_file.name, index=False)
-            mlflow.log_artifact(tmp_file.name, artifact_path="predictions")
+        tmp_prediction_file = None
+        with mlflow.start_run(run_name=f"final_{TARGET_COL}_predictions"):
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
+                    tmp_prediction_file = tmp_file.name
+
+                preds_df.to_csv(tmp_prediction_file, index=False)
+                mlflow.log_artifact(tmp_prediction_file, artifact_path="predictions")
+                logger.info("Final predictions for all horizons logged to MLflow.")
+            finally:
+                if tmp_prediction_file and os.path.exists(tmp_prediction_file):
+                    os.remove(tmp_prediction_file)
     
         ''' for metadata'''
         avg_mae = (

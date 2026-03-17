@@ -16,6 +16,10 @@ PREDICTIONS_FILE = os.getenv(
     "PREDICTIONS_DIR",
     os.path.join(PROJECT_ROOT, "data", "predictions", "hourly", "us_paro_hourly", "test", "hourly_pm25_predictions.csv"),
 )
+EVAL_METADATA_FILE = os.getenv(
+    "EVAL_METADATA_FILE",
+    os.path.join(PROJECT_ROOT, "data", "metadata", "eval.json"),
+)
 
 
 st.set_page_config(page_title="Training & Evaluation History", layout="wide")
@@ -38,11 +42,19 @@ def load_training_metadata():
 
 @st.cache_data
 def load_eval_metadata():
-    payload
-    return preds
-
+    payload = json.load(open(EVAL_METADATA_FILE, "r", encoding="utf-8"))
+    last_eval_run = payload["runtime"]["last_run"]
+    run_date = last_eval_run["timestamp_utc"]
+    horizon = last_eval_run["horizon"]
+    metrics_summary = last_eval_run["metrics_summary"]
+    runs = last_eval_run["metrics_by_horizon"]
+    return {
+        "run_date": run_date,
+        "metrics_summary": metrics_summary,
+        "runs": runs,
+    }
 @st.cache_data
-def load_mlflow_data():
+def load_mlflow__EvalData():
     pass
 
 with tab1:

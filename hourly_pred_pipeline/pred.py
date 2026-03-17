@@ -7,7 +7,7 @@ from modules.mysql_utils import MySQLUtils
 import datetime
 from modules.runtime_metadata import update_pipeline_metadata
 import json
-
+import tempfile
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "data/processed/pred_ingestion/us_paro")
@@ -102,6 +102,7 @@ def pred():
                 
                 expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
                 logger.info("Expected columns for prediction: %s", expected_cols)
+                
                 prediction = model.predict(data[expected_cols])#only using latest aqi fal for proedictoin
 
                 now_time = last_run_time.strftime("%Y-%m-%d %H:%M:%S")   # get current time
@@ -111,9 +112,13 @@ def pred():
             ''' output '''
             
             output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
-            prediction.to_csv(output_file, index=False)
+            prediction.to_csv(output_file, index=False,mode='a')#append mode to keep history
             logger.info("Prediction saved to %s", output_file)
-            mlflow.log_artifact(output_file, artifact_path="predictions")#log prediction to mlflow
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_file = os.path.join(temp_dir, os.path.basename(output_file))
+                prediction.to_csv(temp_file, index=False)
+                mlflow.log_artifact(temp_file, artifact_path="predictions")#log prediction to mlflow
 
             if PRED_MYSQLURI:#check if MySQL URI is provided, if yes write to MySQL
                 mysql_utils.write_dataframe_to_mysql(prediction, table_name="hourly_predictions", if_exists="append")
