@@ -12,6 +12,8 @@ import shap
 from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
 import tempfile
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from train import HORIZON, TARGET_COL
@@ -46,6 +48,7 @@ def main():
     metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
     promoted_models = []
+    os.makedirs(IMAGE_ARTIFACT_DIR, exist_ok=True)
 
     try:
         if not mlflow_sanity_check():
@@ -131,19 +134,31 @@ def main():
                 shap_values = explainer(X_explain)
                 ts = datetime.datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-
+                plt.figure()
                 bar = shap.plots.bar(shap_values, max_display=10,show=False)
+                plt.title(f"SHAP Feature Importance for {h}h Horizon")
                 plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_bar_{h}h.png"))
+                plt.close()
 
-                beeswarm = shap.plots.beeswarm(shap_values, max_display=10)
+                plt.figure()
+                shap.plots.beeswarm(shap_values, max_display=10,show=False)
+                plt.title(f"SHAP Beeswarm for {h}h Horizon")
                 plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_beeswarm_{h}h.png"))
+                plt.close()
 
-                waterfall = shap.plots.waterfall(shap_values[0])
+                plt.figure()
+                shap.plots.waterfall(shap_values[0],show=False)
+                plt.title(f"SHAP Waterfall for {h}h Horizon")
                 plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_waterfall_{h}h.png"))
+                plt.close()
+
                 feature_names = X_explain.columns[0]
-                
-                scatter = shap.plots.scatter(shap_values[:, feature_names], color=shap_values)
+
+                plt.figure()
+                shap.plots.scatter(shap_values[:, feature_names], color=shap_values,show=False)
+                plt.title(f"SHAP Scatter for {h}h Horizon")
                 plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_scatter_{h}h.png"))
+                plt.close()
 
                 
                 ''' not saving png because to save space on azure cloud'''
