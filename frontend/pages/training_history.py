@@ -22,11 +22,17 @@ EVAL_METADATA_FILE = os.getenv(
     os.path.join(PROJECT_ROOT, "data", "metadata", "eval.json"),
 )
 
+TUNING_METADATA_FILE = os.getenv(
+    "TUNING_METADATA_FILE",
+    os.path.join(PROJECT_ROOT, "data", "metadata", "tuning.json"),
+)
+
+
 ARTIFACT_PATH = os.getenv("ARTIFACT_PATH", os.path.join(PROJECT_ROOT, "data", "artifacts","hourly","us_paro","shap"))
 
 
 st.set_page_config(page_title="Training & Evaluation History", layout="wide")
-tab1, tab2 = st.tabs(["Training History", "Evaluation History"])
+tab1, tab2, tab3 = st.tabs(["Training History", "Evaluation History","Tuning History"])
 
 @st.cache_data
 def load_training_metadata():
@@ -114,7 +120,7 @@ with tab1:
                 "Validation RMSE": rmse
             })
             st.dataframe(df)
-            st.line_chart(df.set_index("Horizon (hours)")[["Validation MAE", "Validation RMSE"]])
+            st.bar_chart(df.set_index("Horizon (hours)")[["Validation MAE", "Validation RMSE"]],stack=False)
 
     except Exception as e:
         st.error(f"Error loading training metadata: {e}")
@@ -181,4 +187,4 @@ with tab2:
     except Exception as e:
         st.error(f"Error loading evaluation metadata: {e}")
 
-    
+with tab3:
