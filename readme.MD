@@ -564,6 +564,13 @@ The response returns predictions for all 24 horizons:
 
 ## Prediction Pipeline
 
+<div align="center">
+
+![Pipeline Architecture](.github_utils/pred.drawio.png)
+
+</div>
+
+
 The daily prediction pipeline runs as the `aqi_pred_dag` Airflow DAG and produces live AQI forecasts. Scripts live under `hourly_pred_pipeline/`.
 
 ### Ingestion
