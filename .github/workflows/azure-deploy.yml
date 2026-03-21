@@ -7,4 +7,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-    
+    steps:
+      - name: Deploy to Azure with SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AZURE_HOST }}
+          username: ${{ secrets.AZURE_USERNAME }}
+          key: ${{ secrets.AZURE_SSH_KEY }}
+          port: 22
+          script: |
+            echo "Deploying to Azure VM..."
+            cd pypipeline
+            git pull origin main
+            docker compose down
+            docker compose up -d --build
+            echo "Deployment complete!"
