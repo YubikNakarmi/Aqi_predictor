@@ -376,6 +376,12 @@ MLflow stores:
 
 ## Training Pipeline
 
+<div align="center">
+
+![Pipeline Architecture](.github_utils/train.drawio.png)
+
+</div>
+
 Hourly training runs per horizon (1–24) with separate models and tuning. Pipeline scripts live under `hourly_train_pipeline/`.
 
 Key environment variables (set in `.env`):
