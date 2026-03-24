@@ -3,6 +3,7 @@ import mlflow
 from modules import logging_utils
 import os
 import pandas as pd
+import numpy as np
 from modules.mysql_utils import MySQLUtils
 import datetime
 from modules.runtime_metadata import update_pipeline_metadata
@@ -18,6 +19,34 @@ INGESTION_METADATA_FILE = os.environ.get("INGESTION_METADATA_FILE", "data/metada
 MLFLOW_SERVE_URI = os.getenv("MLFLOW_SERVE_URI", "http://localhost:5050/hourly_pm25_24h_service/invocations")
 logger = logging_utils.setup_logging(__name__)
 ts = datetime.datetime.now(datetime.UTC)
+
+
+def _coerce_input_to_model_schema(df: pd.DataFrame, model) -> pd.DataFrame:
+    """Coerce DataFrame columns to exactly match MLflow model input schema types."""
+    schema = model.metadata.get_input_schema()
+    if schema is None:
+        return df
+
+    coerced = df.copy()
+    for col in schema.inputs:
+        col_name = col.name
+        raw_type = getattr(col.type, "name", str(col.type))
+        col_type = str(raw_type).lower()
+        if col_name not in coerced.columns:
+            continue
+
+        if "integer" in col_type:
+            coerced[col_name] = pd.to_numeric(coerced[col_name], errors="raise").astype(np.int32)
+        elif "long" in col_type:
+            coerced[col_name] = pd.to_numeric(coerced[col_name], errors="raise").astype(np.int64)
+        elif "double" in col_type or "float" in col_type:
+            coerced[col_name] = pd.to_numeric(coerced[col_name], errors="coerce").astype(np.float64)
+        elif "boolean" in col_type:
+            coerced[col_name] = coerced[col_name].astype(bool)
+        elif "string" in col_type:
+            coerced[col_name] = coerced[col_name].astype(str)
+
+    return coerced
 
 def mlflow_sanity_check()->bool:#check mlflow connection
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -97,13 +126,15 @@ def pred():
             run_id = mlflow.active_run().info.run_id
             model_name = "hourly_pm25_24h_service"
             model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
-            data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+            data = pd.read_csv(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+            date = data["date"] 
             logger.info("Data preview:\n%s", data.head())
             
             expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
             logger.info("Expected columns for prediction: %s", expected_cols)
-            
-            raw_prediction = model.predict(data[expected_cols])#only using latest aqi fal for proedictoin
+
+            model_input = _coerce_input_to_model_schema(data[expected_cols], model)
+            raw_prediction = model.predict(model_input)#only using latest aqi fal for proedictoin
             if isinstance(raw_prediction, pd.DataFrame):
                 prediction = raw_prediction.copy()
             elif isinstance(raw_prediction, pd.Series):
@@ -111,14 +142,13 @@ def pred():
             else:
                 prediction = pd.DataFrame({"prediction": raw_prediction})
 
-            now_time = last_run_time.strftime("%Y-%m-%d %H:%M:%S")   # get current time
-            prediction["timestamp"] = now_time
+            prediction["timestamp"] = date
             logger.info("Prediction result:\n%s", prediction)
 
             ''' output '''
             
             output_file = PRED_OUTPUT_PATH + r"/" + ts.strftime("%Y-%m-%d") + ".csv"
-            prediction.to_csv(output_file, index=False,mode='a')#append mode to keep history
+            prediction.to_csv(output_file, index=False)#append mode to keep history
             logger.info("Prediction saved to %s", output_file)
 
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -129,6 +159,11 @@ def pred():
             if PRED_MYSQLURI:#check if MySQL URI is provided, if yes write to MySQL
                 mysql_utils.write_dataframe_to_mysql(prediction, table_name="hourly_predictions", if_exists="append")
                 logger.info("Prediction written to MySQL table hourly_predictions")
+
+            numeric_prediction_cols = prediction.select_dtypes(include=[np.number]).columns.tolist()
+            latest_prediction_value = (
+                float(prediction[numeric_prediction_cols[0]].iloc[0]) if numeric_prediction_cols else None
+            )
 
             update_pipeline_metadata(
                 metadata_file,
@@ -141,7 +176,7 @@ def pred():
                     "registered_model": model_name,
                     "output_file": output_file,
                     "prediction_rows": int(len(prediction)),
-                    "latest_prediction": float(prediction["prediction"].iloc[0]),
+                    "latest_prediction": latest_prediction_value,
                 },
             )
     except Exception as exc:
