@@ -17,7 +17,7 @@ PREDICTION_METADATA_FILE = os.environ.get("PREDICTION_METADATA_FILE", "data/meta
 INGESTION_METADATA_FILE = os.environ.get("INGESTION_METADATA_FILE", "data/metadata/ingestion.json")
 MLFLOW_SERVE_URI = os.getenv("MLFLOW_SERVE_URI", "http://localhost:5050/hourly_pm25_24h_service/invocations")
 logger = logging_utils.setup_logging(__name__)
-
+ts = datetime.datetime.now(datetime.UTC)
 
 def mlflow_sanity_check()->bool:#check mlflow connection
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -38,18 +38,18 @@ def path_sanity_check()->bool:#check if path exists
     logger.info("Data paths verified: %s, %s", PRED_PROCESSED_PATH, PRED_OUTPUT_PATH)
     return True
 
-def check_api()->bool:#check if mlflow serve is up    
-        try:
-            response = requests.get(MLFLOW_SERVE_URI, json={})
-            if response.status_code == 200:
-                logger.info("MLflow model serve is up at %s", MLFLOW_SERVE_URI)
-                return True
-            else:
-                logger.error(f"MLflow model serve at {MLFLOW_SERVE_URI} returned status code {response.status_code}")
-                return False
-        except requests.exceptions.ConnectionError:
-            logger.warning("MLflow model serve at %s is not reachable, falling back to pyfunc", MLFLOW_SERVE_URI)
-            return False
+# def check_api()->bool:#check if mlflow serve is up    
+#         try:
+#             response = requests.get(MLFLOW_SERVE_URI, json={})
+#             if response.status_code == 200:
+#                 logger.info("MLflow model serve is up at %s", MLFLOW_SERVE_URI)
+#                 return True
+#             else:
+#                 logger.error(f"MLflow model serve at {MLFLOW_SERVE_URI} returned status code {response.status_code}")
+#                 return False
+#         except requests.exceptions.ConnectionError:
+#             logger.warning("MLflow model serve at %s is not reachable, falling back to pyfunc", MLFLOW_SERVE_URI)
+#             return False
     
     
 
@@ -75,43 +75,49 @@ def pred():
         with mlflow.start_run(run_name="hourly_prediction_run"):#set prediction expermiment
 
 
-            if check_api():
-                logger.info("Using MLflow model serve API for prediction")
-                data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
-                logger.info("Data preview:\n%s", data.head())
+            # if check_api():
+            #     logger.info("Using MLflow model serve API for prediction")
+            #     data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+            #     logger.info("Data preview:\n%s", data.head())
 
-                responses = pd.DataFrame()
+            #     responses = pd.DataFrame()
 
-                for data in data.itertuples():
-                    response = requests.post(MLFLOW_SERVE_URI, json=data.to_dict(orient="records")[0])#only using latest aqi fal for proedictoin
-                    responses = pd.concat([responses, pd.DataFrame([response.json()])], ignore_index=True)
+            #     for data in data.itertuples():
+            #         response = requests.post(MLFLOW_SERVE_URI, json=data.to_dict(orient="records")[0])#only using latest aqi fal for proedictoin
+            #         responses = pd.concat([responses, pd.DataFrame([response.json()])], ignore_index=True)
 
-                if response.status_code == 200:
-                    prediction = pd.DataFrame(response.json())
-                    logger.info("Prediction result:\n%s", prediction)
-                else:
-                    raise ValueError(f"MLflow model serve returned status code {response.status_code}: {response.text}")
+            #     if response.status_code == 200:
+            #         prediction = pd.DataFrame(response.json())
+            #         logger.info("Prediction result:\n%s", prediction)
+            #     else:
+            #         raise ValueError(f"MLflow model serve returned status code {response.status_code}: {response.text}")
 
-            else:    
-                logger.info("Using MLflow pyfunc API for prediction")
-                run_id = mlflow.active_run().info.run_id
-                model_name = "hourly_pm25_24h_service"
-                model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
-                data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
-                logger.info("Data preview:\n%s", data.head())
                 
-                expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
-                logger.info("Expected columns for prediction: %s", expected_cols)
-                
-                prediction = model.predict(data[expected_cols])#only using latest aqi fal for proedictoin
+            logger.info("Using MLflow pyfunc API for prediction")
+            run_id = mlflow.active_run().info.run_id
+            model_name = "hourly_pm25_24h_service"
+            model = mlflow.pyfunc.load_model(f"models:/{model_name}/latest")#load model from registry
+            data = pd.read_parquet(PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv")
+            logger.info("Data preview:\n%s", data.head())
+            
+            expected_cols = [col.name for col in model.metadata.get_input_schema().inputs]#get expected columns from model signature
+            logger.info("Expected columns for prediction: %s", expected_cols)
+            
+            raw_prediction = model.predict(data[expected_cols])#only using latest aqi fal for proedictoin
+            if isinstance(raw_prediction, pd.DataFrame):
+                prediction = raw_prediction.copy()
+            elif isinstance(raw_prediction, pd.Series):
+                prediction = raw_prediction.to_frame(name="prediction")
+            else:
+                prediction = pd.DataFrame({"prediction": raw_prediction})
 
-                now_time = last_run_time.strftime("%Y-%m-%d %H:%M:%S")   # get current time
-                prediction["timestamp"] = now_time
-                logger.info("Prediction result:\n%s", prediction)
+            now_time = last_run_time.strftime("%Y-%m-%d %H:%M:%S")   # get current time
+            prediction["timestamp"] = now_time
+            logger.info("Prediction result:\n%s", prediction)
 
             ''' output '''
             
-            output_file = PRED_OUTPUT_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
+            output_file = PRED_OUTPUT_PATH + r"/" + ts.strftime("%Y-%m-%d") + ".csv"
             prediction.to_csv(output_file, index=False,mode='a')#append mode to keep history
             logger.info("Prediction saved to %s", output_file)
 
@@ -142,7 +148,7 @@ def pred():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
+                "timestamp_utc": ts.isoformat() + "Z",
                 "pipeline": "prediction",
                 "stage": "predict",
                 "status": "failed",

@@ -29,6 +29,7 @@ def ingest():
             file_path=output_file,
             column=COLUMNS
         )
+        logger.info("Data saved to %s", output_file)
 
         update_pipeline_metadata(#metadata update 
             metadata_file,

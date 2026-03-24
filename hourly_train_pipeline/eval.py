@@ -45,6 +45,9 @@ def mlflow_sanity_check() -> bool:
 
 
 def main():
+
+    ts = datetime.datetime.now(timezone.utc).isoformat()
+
     metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
     promoted_models = []
@@ -132,24 +135,24 @@ def main():
 
                 explainer = shap.Explainer(model, X_bg)
                 shap_values = explainer(X_explain)
-                ts = datetime.datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                tsI = datetime.datetime.fromisoformat(ts).strftime("%Y-%m-%dT%H:%M:%SZ")#convert iso fromat to timezeon
 
                 plt.figure()
                 bar = shap.plots.bar(shap_values, max_display=10,show=False)
                 plt.title(f"SHAP Feature Importance for {h}h Horizon")
-                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_bar_{h}h.png"))
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_bar_{h}h.png"))
                 plt.close()
 
                 plt.figure()
                 shap.plots.beeswarm(shap_values, max_display=10,show=False)
                 plt.title(f"SHAP Beeswarm for {h}h Horizon")
-                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_beeswarm_{h}h.png"))
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_beeswarm_{h}h.png"))
                 plt.close()
 
                 plt.figure()
                 shap.plots.waterfall(shap_values[0],show=False)
                 plt.title(f"SHAP Waterfall for {h}h Horizon")
-                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_waterfall_{h}h.png"))
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_waterfall_{h}h.png"))
                 plt.close()
 
                 feature_names = X_explain.columns[0]
@@ -157,7 +160,7 @@ def main():
                 plt.figure()
                 shap.plots.scatter(shap_values[:, feature_names], color=shap_values,show=False)
                 plt.title(f"SHAP Scatter for {h}h Horizon")
-                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{ts}_shap_scatter_{h}h.png"))
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_scatter_{h}h.png"))
                 plt.close()
 
                 
@@ -302,7 +305,7 @@ def main():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.now(timezone.utc).isoformat(),
+                "timestamp_utc": ts,
                 "pipeline": "training",
                 "stage": "eval",
                 "status": "success",
@@ -317,7 +320,7 @@ def main():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.now(timezone.utc).isoformat(),
+                "timestamp_utc": ts,
                 "pipeline": "training",
                 "stage": "eval",
                 "status": "failed",

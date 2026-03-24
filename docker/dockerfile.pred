@@ -1,14 +1,27 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* && pip install --upgrade pip
 
 
 RUN pip install --no-cache-dir \
-    mlflow \
-    xgboost \
-    pandas \
-    pymysql
+    mlflow==3.8.1 \
+    xgboost==3.0.5 \
+    pandas==2.3.1 \
+    numpy==2.3.2 \
+    scipy==1.16.1 \
+    scikit-learn==1.7.1 \
+    pyarrow==21.0.0 \
+    pymysql \
+    aiohttp==3.12.15 \
+    azure-common==1.1.28 \
+    azure-datalake-store==0.0.53 \
+    azure-storage-blob==12.26.0 \
+    azure-identity==1.24.0 \
+    cryptography==46.0.3 \
+    ipython==9.8.0 \
+    psutil==7.0.0 \
+    tqdm==4.67.1
 
 COPY src/ ./src/
 COPY pyproject.toml setup.cfg ./
@@ -18,3 +31,4 @@ RUN pip install --no-cache-dir -e .
 COPY ./hourly_pred_pipeline ./hourly_pred_pipeline
 
 ENV PYTHONUNBUFFERED=1
+ENV GIT_PYTHON_REFRESH=quiet
