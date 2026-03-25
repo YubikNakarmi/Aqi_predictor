@@ -18,9 +18,6 @@
 
 **An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.**
 
-> [!IMPORTANT]
-> Since open source data was used, it is very poor quality for AQI prediction. Thus, the model is not accurate as it should be. For future use good qualty data with additional weather data and with less missing values. 
-
 
 </div>
 
@@ -61,6 +58,10 @@ This project builds and operates a complete AQI forecasting system:
 - **Predicts** daily by ingesting live data, preprocessing, and running inference.
 - **Displays** predictions in a Streamlit dashboard.
 - **Orchestrates** training (monthly) and prediction (daily) via Airflow DAGs running Dockerized tasks.
+
+> [!IMPORTANT]
+> Since open source data was used, it is very poor quality for AQI prediction. Thus, the model is not accurate as it should be. For future use good qualty data with additional weather data and with less missing values. 
+
 
 ---
 
@@ -268,7 +269,7 @@ Copy the template and fill in your values:
 cp .env.template .env
 ```
 
-> [!IMPORTANT]
+> [!NOTE]
 > All variables below must be set before running any service.
 
 <details>
