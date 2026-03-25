@@ -16,6 +16,8 @@
 
 [![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
 
+[![CD to Azure](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml/badge.svg?branch=main)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml)
+
 **An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.**
 
 </div>
