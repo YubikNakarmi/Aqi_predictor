@@ -693,6 +693,7 @@ For Azure Blob Storage, the connection string can also be placed in `secrets/azu
 ---
 # Improvements
 - Use a more robust data for training, currently only aqi data with large gaps is used, which is not ideal for training a good model. A more complete dataset with fewer gaps would improve model performance. Additonally use weather data as features, which are currently not used but could provide valuable information for AQI prediction.
-
+- Make cenral modules in /src more robust and customizable, such as DataCleaner, to handle different datasets and feature engineering needs without code changes.
+- Implement monitoring using NannyML or custom Airflow tasks to track data quality, model performance, and pipeline health over time.
 # Credits
 - [Training data source](https://opendatanepal.com/datasets/air-quality-data-in-kathmandu)
