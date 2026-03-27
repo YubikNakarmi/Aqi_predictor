@@ -18,4 +18,5 @@ pymysql==1.1.0
 shap
 pytest==8.4.1
 sqlalchemy>=2.0.0,<2.1.0
+streamlit==1.30.0
 

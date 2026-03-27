@@ -13,3 +13,6 @@ cmds.sh
 *.egg-info/
 sample.md
 ec2.pem
+.terraform*
+terraform.tfstate
+terraform.tfstate.backup
