@@ -3,6 +3,13 @@ name: ML Tests & CML Report
 on:
   pull_request:
     branches: [dev, main]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/**'
+      - 'notebooks/**'
+      - '**.dvc'
+      - 'data/**'
+      - 'azure-deploy/**'
   
 
 permissions:
