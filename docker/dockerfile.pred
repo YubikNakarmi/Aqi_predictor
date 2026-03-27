@@ -13,16 +13,12 @@ RUN pip install --no-cache-dir \
     scikit-learn==1.7.1 \
     pyarrow==21.0.0 \
     pymysql \
-    aiohttp==3.12.15 \
     azure-common==1.1.28 \
-    azure-datalake-store==0.0.53 \
     azure-storage-blob==12.26.0 \
     azure-identity==1.24.0 \
     cryptography==46.0.3 \
     ipython==9.8.0 \
-    psutil==7.0.0 \
-    tqdm==4.67.1
-
+    
 COPY src/ ./src/
 COPY pyproject.toml setup.cfg ./
 

@@ -64,6 +64,7 @@ with st.spinner("Loading prediction metadata..."):
     except Exception as e:
         st.error(f"Error loading prediction metadata: {e}")
 
+st.subheader("Station: US Paro(PAO)")
 df = load_predictions().iloc[0]
 date = df["timestamp"]
 date_range = pd.date_range(start=date, end=date + pd.Timedelta(hours=24), freq="H")
