@@ -1,8 +1,7 @@
 From python:3.9-slim
 
 WORKDIR /frontend
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt streamlit
+RUN pip install --no-cache-dir mlflow pandas streamlit
 COPY . .
 
 EXPOSE 8501

@@ -14,11 +14,12 @@ import pandas as pd
 host_path = "/d/pypipeline/data" #HOST PATH TO DATA FOLDER, ADJUST AS NEEDED
 
 OPEN_WEATHER_API_KEY = os.environ.get("OPEN_WEATHER_API_KEY", "")
-PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH", "/data/raw/pred_ingestion/us_paro")
-PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH", "/data/processed/pred_ingestion/us_paro")
-PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH", "/data/predictions/hourly/us_paro_hourly/prod")
+PRED_INGEST_PATH = os.environ.get("PRED_INGEST_PATH")
+PRED_PROCESSED_PATH = os.environ.get("PRED_PROCESSED_PATH")
+PRED_OUTPUT_PATH = os.environ.get("PRED_OUTPUT_PATH")
 DEFAULT_AQI_COLUMNS = ["date","o3","pm25"]
 INGEST_LOOKBACK_HOURS = os.environ.get("INGEST_LOOKBACK_HOURS", 24)
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
 
 
 key = os.environ.get("OPEN_WEATHER_API_KEY", "")
@@ -37,7 +38,9 @@ environment_vars = {
     'PRED_PROCESSED_PATH': PRED_PROCESSED_PATH,
     'PRED_OUTPUT_PATH': PRED_OUTPUT_PATH,
     'INGEST_LOOKBACK_HOURS': INGEST_LOOKBACK_HOURS,
-    "DEFAULT_AQI_COLUMNS": DEFAULT_AQI_COLUMNS
+    "DEFAULT_AQI_COLUMNS": DEFAULT_AQI_COLUMNS,
+    "MLFLOW_TRACKING_URI": MLFLOW_TRACKING_URI
+
     }
 
 with DAG(dag_id="aqi_pred_dag", start_date=datetime(2025, 8, 1),schedule='@daily',catchup=False,
@@ -75,7 +78,7 @@ with DAG(dag_id="aqi_pred_dag", start_date=datetime(2025, 8, 1),schedule='@daily
         auto_remove='success',
         docker_url='unix://var/run/docker.sock',
         network_mode='pypipeline_aqi_network',
-        command='python hourly_pred_pipeline/predict.py',
+        command='python hourly_pred_pipeline/pred.py',
         mounts=[mount],
         environment = environment_vars
         )

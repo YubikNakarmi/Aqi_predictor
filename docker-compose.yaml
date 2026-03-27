@@ -196,13 +196,19 @@ services:
     image: aqi-model-serve:latest
     env_file:
       - .env
-    command: 
-      - mlflow models serve
-      - --model-uri models:/hourly_${TARGET_COL}_24h_service/latest #model location 
-      - --host 0.0.0.0
-      - --port 5050
-      - --no-conda #ignore conda install
-      - --allowed-hosts "*"
+    command:
+      - mlflow
+      - models
+      - serve
+      - --model-uri
+      - models:/hourly_${TARGET_COL}_24h_service/latest
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5050"
+      - --no-conda
+      - --allowed-hosts
+      - "*"
     ports:
       - "5050:5050"
     depends_on:
@@ -239,8 +245,8 @@ services:
       - aqi_network
     profiles:
       - manual
-    mem_limit: 3g
-    memswap_limit: 3g
+    mem_limit: 5g
+    memswap_limit: 5g
   
   prediction:
     build:

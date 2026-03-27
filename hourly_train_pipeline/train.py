@@ -8,6 +8,9 @@ from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
 
 DATA_PROCESSED_DIR = os.getenv("DATA_PROCESSED_PATH", r"data/processed/hourly/us_paro_hourly/")
+TRAIN_PROCESSED_FILE = os.getenv("TRAIN_PROCESSED_FILE", f"{DATA_PROCESSED_DIR}/train_processed.parquet")
+VAL_PROCESSED_FILE = os.getenv("VAL_PROCESSED_FILE", f"{DATA_PROCESSED_DIR}/val_processed.parquet")
+
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_PATH", r"data/predictions/hourly/us_paro_hourly/test/")
 HORIZON = int(os.getenv("HORIZON", 24))
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -15,6 +18,7 @@ ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 TARGET_COL = os.getenv("TARGET_COL", "pm25")  # Default to pm25, can be "o3" or others
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
+TRAINING_METADATA_FILE = os.getenv("TRAINING_METADATA_FILE", "data/metadata/train.json")
 
 logger = setup_logging(__name__)
 
@@ -31,13 +35,13 @@ def mlflow_sanity_check()->bool:
         raise ConnectionError(f"Failed to connect to MLflow tracking server at {MLFLOW_TRACKING_URI}: {e}")
         
 def main():
-    metadata_file = "data/metadata/train.json"
+    metadata_file = TRAINING_METADATA_FILE
 
     try:
         if mlflow_sanity_check() is False:
             return
-        train_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/train_processed.parquet")
-        val_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/val_processed.parquet")
+        train_df = pd.read_parquet(TRAIN_PROCESSED_FILE)
+        val_df = pd.read_parquet(VAL_PROCESSED_FILE)
         logger.info("Test data loaded")
 
         with open(f"{ARTIFACTS_PATH}/best_params.json", "r", encoding="utf-8") as f:

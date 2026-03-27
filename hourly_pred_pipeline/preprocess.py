@@ -35,7 +35,7 @@ def preprocess():
 
         df_4 = clean.engineer_features(df_3)
         output_file = PRED_PROCESSED_PATH + r"/" + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d") + ".csv"
-        df_4.to_parquet(output_file)
+        df_4.to_csv(output_file)
 
         update_pipeline_metadata(
             metadata_file,

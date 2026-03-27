@@ -1,0 +1,40 @@
+name: "Push to Docker Hub"
+
+on:
+  push:
+    branches: [main, dev,test]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Set tag
+      id: vars
+      run: |
+          if [[ "${GITHUB_REF##*/}" == "main" ]]; then
+            echo "TAG=prod" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == "test" ]]; then
+            echo "TAG=test" >> $GITHUB_ENV
+          else
+            echo "TAG=dev" >> $GITHUB_ENV
+          fi
+
+    - name: Build and push Docker image
+      env:
+        TAG: ${{ env.TAG }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      run: |
+        for dockerfile in docker/Dockerfile.*; do
+          imagename=$(basename $dockerfile | tr '[:upper:]' '[:lower:]' | sed 's/dockerfile.//')
+          docker build -f $dockerfile -t $DOCKER_USERNAME/$imagename-$TAG .
+          docker push $DOCKER_USERNAME/$imagename-$TAG
+        done
+        echo "Pushed images with tag:$imagename-$TAG"
