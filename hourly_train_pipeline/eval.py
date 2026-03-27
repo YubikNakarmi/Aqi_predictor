@@ -1,15 +1,21 @@
+''' NEEDS REFACTORING TO MAKE IT MORE MODULAR USING FUNCTIONS'''
+
 import os
 import datetime
 from datetime import timezone
-
 import mlflow
 import pandas as pd
 import xgboost as xgb
 from mlflow import MlflowClient
 from mlflow.models import MetricThreshold
-
+import shap
 from modules.logging_utils import setup_logging
 from modules.runtime_metadata import update_pipeline_metadata
+import tempfile
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
 from train import HORIZON, TARGET_COL
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
@@ -18,7 +24,9 @@ TARGET_COL = os.getenv("TARGET_COL", "pm25")
 VALUE_MIN = float(os.getenv("VALUE_MIN", 0))
 VALUE_MAX = float(os.getenv("VALUE_MAX", 500))
 PREDICTIONS_DIR = os.getenv("PREDICTIONS_DIR", r"data/predictions/hourly/us_paro_hourly")
-TRAIN_METADATA_FILE = os.getenv("TRAIN_METADATA_FILE", "data/metadata/train.json")
+EVAL_METADATA_FILE = os.getenv("EVAL_METADATA_FILE", "data/metadata/eval.json")
+IMAGE_ARTIFACT_DIR = os.getenv("IMAGE_ARTIFACT_DIR", "data/artifacts/hourly/us_paro/shap")
+
 logger = setup_logging(__name__)
 
 
@@ -37,9 +45,13 @@ def mlflow_sanity_check() -> bool:
 
 
 def main():
-    metadata_file = TRAIN_METADATA_FILE
+
+    ts = datetime.datetime.now(timezone.utc).isoformat()
+
+    metadata_file = EVAL_METADATA_FILE
     evaluation_metrics = []
     promoted_models = []
+    os.makedirs(IMAGE_ARTIFACT_DIR, exist_ok=True)
 
     try:
         if not mlflow_sanity_check():
@@ -66,6 +78,7 @@ def main():
 
         for h in range(1, HORIZON + 1):
             with mlflow.start_run(run_name=f"final_{TARGET_COL}_evaluation_{h}h"):
+                ''' load data and models'''
                 model_uri = f"models:/pm25_plus_{h}h_model/latest"#mlflow uri for model
                 model = mlflow.xgboost.load_model(model_uri)
                 target_key = f"{TARGET_COL}_plus_{h}h" #target pm25
@@ -80,6 +93,7 @@ def main():
                     & (df_test[target_key] <= VALUE_MAX)
                 )
 
+                ''' preprocessing stps'''
                 if "date" in df_test.columns:
                     date_series = df_test.loc[:, "date"]#if date column exists, use it as date series for evaluation dataframe
                 else:
@@ -89,6 +103,7 @@ def main():
                 X = df_test.loc[test_mask].drop(features_exclude, axis=1).copy()
                 y = df_test.loc[test_mask, target_key]
 
+                ''' predictionss and evals'''
                 X_dmatrix = xgb.DMatrix(X)
                 y_pred = model.predict(X_dmatrix)
                 logger.info("Predictions for horizon %sh completed.", h)
@@ -96,7 +111,7 @@ def main():
                 eval_df = pd.DataFrame({"prediction": y_pred, "target": y})
                 mlflow.set_tag("horizon", f"{h}h")
 
-                horizon_predictions.append(
+                horizon_predictions.append(#appending preictoins
                     pd.DataFrame(
                         {
                             "date": filtered_dates.values,
@@ -110,8 +125,65 @@ def main():
                 prediction_df = eval_df.copy()
                 prediction_df["date"] = filtered_dates.values
                 prediction_df.to_csv(prediction_path, index=False)
-                mlflow.log_artifact(prediction_path, artifact_path="prediction")
+
                 os.remove(prediction_path)
+
+
+                ''' shap values '''
+                X_bg = X.sample(n=min(300, len(X)), random_state=42)
+                X_explain = X.sample(n=min(300, len(X)), random_state=42)
+
+                explainer = shap.Explainer(model, X_bg)
+                shap_values = explainer(X_explain)
+                tsI = datetime.datetime.fromisoformat(ts).strftime("%Y-%m-%dT%H:%M:%SZ")#convert iso fromat to timezeon
+
+                plt.figure()
+                bar = shap.plots.bar(shap_values, max_display=10,show=False)
+                plt.title(f"SHAP Feature Importance for {h}h Horizon")
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_bar_{h}h.png"))
+                plt.close()
+
+                plt.figure()
+                shap.plots.beeswarm(shap_values, max_display=10,show=False)
+                plt.title(f"SHAP Beeswarm for {h}h Horizon")
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_beeswarm_{h}h.png"))
+                plt.close()
+
+                plt.figure()
+                shap.plots.waterfall(shap_values[0],show=False)
+                plt.title(f"SHAP Waterfall for {h}h Horizon")
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_waterfall_{h}h.png"))
+                plt.close()
+
+                feature_names = X_explain.columns[0]
+
+                plt.figure()
+                shap.plots.scatter(shap_values[:, feature_names], color=shap_values,show=False)
+                plt.title(f"SHAP Scatter for {h}h Horizon")
+                plt.savefig(os.path.join(IMAGE_ARTIFACT_DIR, f"eval_{tsI}_shap_scatter_{h}h.png"))
+                plt.close()
+
+                
+                ''' not saving png because to save space on azure cloud'''
+                # mlflow.log_figure(bar, artifact_file=f"shap_bar_{h}h.png")
+                # mlflow.log_figure(beeswarm, artifact_file=f"shap_beeswarm_{h}h.png")
+                # mlflow.log_figure(waterfall, artifact_file=f"shap_waterfall_{h}h.png")
+                # mlflow.log_figure(scatter, artifact_file=f"shap_scatter_{h}h.png") 
+
+
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    background_file = os.path.join(temp_dir, f"shap_bg_{h}h.csv")
+                    explain_file = os.path.join(temp_dir, f"shap_explain_{h}h.csv")
+                    X_bg.to_csv(background_file, index=False)
+                    X_explain.to_csv(explain_file, index=False)
+                    mlflow.log_artifact(background_file, artifact_path="shap")
+                    logger.info("SHAP background samples for horizon %sh logged to MLflow.", h)
+                    mlflow.log_artifact(explain_file, artifact_path="shap")
+                    logger.info("SHAP explain samples for horizon %sh logged to MLflow.", h)
+
+
+
+                ''' threshold checking and promotoin'''
 
                 threshold = {
                     "mean_absolute_error": MetricThreshold(threshold=25.0, greater_is_better=False),
@@ -160,13 +232,18 @@ def main():
                         logger.warning("Could not find model version for %s", model_name)
                 except mlflow.exceptions.MlflowException as exc:
                     logger.info("Validation threshold check failed: %s", exc)
-
+                
+                '''metadata store for each horizon'''
                 evaluation_metrics.append(
                     {
                         "horizon": h,
                         "target_key": target_key,
+                        "run_id": mlflow.active_run().info.run_id,
                         "mae": result.metrics.get("mean_absolute_error"),
                         "rmse": result.metrics.get("root_mean_squared_error"),
+                        "features": X.columns.tolist(),
+                        "background_samples_location": f"shap/shap_bg_{h}h.csv",
+                        "explain_samples_location": f"shap/shap_explain_{h}h.csv",
                     }
                 )
 
@@ -177,6 +254,7 @@ def main():
                     mlflow.log_artifact(feature_file, artifact_path="features")
                     os.remove(feature_file)
 
+        ''' saving predictions'''
         if horizon_predictions:
             preds_df = horizon_predictions[0].set_index("date")
             for item in horizon_predictions[1:]:
@@ -191,9 +269,23 @@ def main():
         os.makedirs(predictions_out_dir, exist_ok=True)
         preds_df.to_csv(
             os.path.join(predictions_out_dir, f"hourly_{TARGET_COL}_predictions.csv"),
-            index=False,
+            index=False,mode="a"
         )
 
+        tmp_prediction_file = None
+        with mlflow.start_run(run_name=f"final_{TARGET_COL}_predictions"):
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
+                    tmp_prediction_file = tmp_file.name
+
+                preds_df.to_csv(tmp_prediction_file, index=False)
+                mlflow.log_artifact(tmp_prediction_file, artifact_path="predictions")
+                logger.info("Final predictions for all horizons logged to MLflow.")
+            finally:
+                if tmp_prediction_file and os.path.exists(tmp_prediction_file):
+                    os.remove(tmp_prediction_file)
+    
+        ''' for metadata'''
         avg_mae = (
             sum(item["mae"] for item in evaluation_metrics if item["mae"] is not None)
             / len(evaluation_metrics)
@@ -205,12 +297,15 @@ def main():
             / len(evaluation_metrics)
             if evaluation_metrics
             else None
+
         )
 
+
+        ''' final metadata store'''
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.now(timezone.utc).isoformat(),
+                "timestamp_utc": ts,
                 "pipeline": "training",
                 "stage": "eval",
                 "status": "success",
@@ -225,7 +320,7 @@ def main():
         update_pipeline_metadata(
             metadata_file,
             {
-                "timestamp_utc": datetime.datetime.now(timezone.utc).isoformat(),
+                "timestamp_utc": ts,
                 "pipeline": "training",
                 "stage": "eval",
                 "status": "failed",

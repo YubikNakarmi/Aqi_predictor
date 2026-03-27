@@ -16,7 +16,10 @@
 
 [![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
 
+[![CD to Azure](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml/badge.svg?branch=main)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml)
+
 **An end-to-end Air Quality Index (AQI) forecasting system that predicts hourly PM2.5 levels up to 24 hours ahead using XGBoost models, orchestrated by Apache Airflow and served via MLflow.**
+
 
 </div>
 
@@ -57,6 +60,10 @@ This project builds and operates a complete AQI forecasting system:
 - **Predicts** daily by ingesting live data, preprocessing, and running inference.
 - **Displays** predictions in a Streamlit dashboard.
 - **Orchestrates** training (monthly) and prediction (daily) via Airflow DAGs running Dockerized tasks.
+
+> [!IMPORTANT]
+> Since open source data was used, it is very poor quality for AQI prediction. Thus, the model is not accurate as it should be. For future use good qualty data with additional weather data and with less missing values. 
+
 
 ---
 
@@ -264,7 +271,7 @@ Copy the template and fill in your values:
 cp .env.template .env
 ```
 
-> [!IMPORTANT]
+> [!NOTE]
 > All variables below must be set before running any service.
 
 <details>
@@ -374,7 +381,57 @@ MLflow stores:
 
 ---
 
+## Libraries
+Local libararies were specifically build for this project to reduce code redundancy and to make the code more modular and reusable. The libraries are located in `src/modules/` and `src/scripts/`. They include:
+### data_cleaner.py
+  data preprocessing utilities (missing value handling, outlier detection, feature engineering). This requires the following features to work properly. There are differnt function which can be called to run this module in differnt ways: 
+
+#### `run()`:
+ main entry point for preprocessing raw data. Applies all transformations and saves processed Parquet files. Furthermore, this steps also removes unecessary columns .Expected input features:
+ ```python
+ ["locationId", "location", "city", "country", "utc", "local", "parameter", "value", "unit", "latitude", "longitude"]
+ ```
+ [!NOTE]
+ This is hard coded, need to make it more flexible to accomodate different datasets.
+
+#### `run_clean()`:
+This step cleans the raw data with major steps such as: 
+- Extracting pm and o3 columns from the raw data
+- Clean data by handling ouliers, setting frequency of data to hourly.
+- Adding time features such as hour of day, day of week, is_weekend, and is_night.
+- Add missing values flags. 
+#### `run_feature_engineering()`:
+This step adds lag features, rolling statistics, and shifted target columns for all horizons. It also applies the segmentation logic to prevent data leakage across missing-value gaps. Expected input features:
+```python
+["pm25", "o3", "hour","date","was_imputed","day_of_week","is_weekend","
+is_night","hour_sin","hour_cos","pm25_missing","o3_missing","was_imputed",
+"pm25_gap_length","o3_gap_length","segment_id",]
+```
+#### Installation
+```sh
+pip install -e .
+```
+
+This exposes CLI entry points defined in `setup.cfg`:
+- `aqi-ingest`
+- `aqi-train`
+- `data_hourly_preprocessing`
+
+To undo:
+```sh
+pip uninstall pypipeline
+```
+
+---
+
+
 ## Training Pipeline
+
+<div align="center">
+
+![Pipeline Architecture](.github_utils/train.drawio.png)
+
+</div>
 
 Hourly training runs per horizon (1–24) with separate models and tuning. Pipeline scripts live under `hourly_train_pipeline/`.
 
@@ -564,6 +621,13 @@ The response returns predictions for all 24 horizons:
 
 ## Prediction Pipeline
 
+<div align="center">
+
+![Pipeline Architecture](.github_utils/pred.drawio.png)
+
+</div>
+
+
 The daily prediction pipeline runs as the `aqi_pred_dag` Airflow DAG and produces live AQI forecasts. Scripts live under `hourly_pred_pipeline/`.
 
 ### Ingestion
@@ -588,7 +652,6 @@ python hourly_pred_pipeline/pred.py
 ## Frontend
 
 A **Streamlit** dashboard (`frontend/app.py`) provides a visual interface for AQI predictions:
-- **City selector** — choose from configured stations
 - **Horizon slider** — select forecast horizon (1–24h)
 - **AQI metric display** — shows the predicted value
 - **Trend chart** — visualizes prediction trends over time
@@ -622,24 +685,9 @@ terraform apply
 ```
 
 ---
+## CI/CD
 
-## Development (editable install)
 
-```sh
-pip install -e .
-```
-
-This exposes CLI entry points defined in `setup.cfg`:
-- `aqi-ingest`
-- `aqi-train`
-- `data_hourly_preprocessing`
-
-To undo:
-```sh
-pip uninstall pypipeline
-```
-
----
 
 ## Notebooks
 
@@ -671,6 +719,9 @@ MYSQL_PW=...
 For Azure Blob Storage, the connection string can also be placed in `secrets/azure_storage_connection_string.txt` for services that read from file.
 
 ---
-
+# Improvements
+- Use a more robust data for training, currently only aqi data with large gaps is used, which is not ideal for training a good model. A more complete dataset with fewer gaps would improve model performance. Additonally use weather data as features, which are currently not used but could provide valuable information for AQI prediction.
+- Make cenral modules in /src more robust and customizable, such as DataCleaner, to handle different datasets and feature engineering needs without code changes.
+- Implement monitoring using NannyML or custom Airflow tasks to track data quality, model performance, and pipeline health over time.
 # Credits
 - [Training data source](https://opendatanepal.com/datasets/air-quality-data-in-kathmandu)
