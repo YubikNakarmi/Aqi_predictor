@@ -381,6 +381,50 @@ MLflow stores:
 
 ---
 
+## Libraries
+Local libararies were specifically build for this project to reduce code redundancy and to make the code more modular and reusable. The libraries are located in `src/modules/` and `src/scripts/`. They include:
+### data_cleaner.py
+  data preprocessing utilities (missing value handling, outlier detection, feature engineering). This requires the following features to work properly. There are differnt function which can be called to run this module in differnt ways: 
+
+#### `run()`:
+ main entry point for preprocessing raw data. Applies all transformations and saves processed Parquet files. Furthermore, this steps also removes unecessary columns .Expected input features:
+ ```python
+ ["locationId", "location", "city", "country", "utc", "local", "parameter", "value", "unit", "latitude", "longitude"]
+ ```
+ [!NOTE]
+ This is hard coded, need to make it more flexible to accomodate different datasets.
+
+#### `run_clean()`:
+This step cleans the raw data with major steps such as: 
+- Extracting pm and o3 columns from the raw data
+- Clean data by handling ouliers, setting frequency of data to hourly.
+- Adding time features such as hour of day, day of week, is_weekend, and is_night.
+- Add missing values flags. 
+#### `run_feature_engineering()`:
+This step adds lag features, rolling statistics, and shifted target columns for all horizons. It also applies the segmentation logic to prevent data leakage across missing-value gaps. Expected input features:
+```python
+["pm25", "o3", "hour","date","was_imputed","day_of_week","is_weekend","
+is_night","hour_sin","hour_cos","pm25_missing","o3_missing","was_imputed",
+"pm25_gap_length","o3_gap_length","segment_id",]
+```
+#### Installation
+```sh
+pip install -e .
+```
+
+This exposes CLI entry points defined in `setup.cfg`:
+- `aqi-ingest`
+- `aqi-train`
+- `data_hourly_preprocessing`
+
+To undo:
+```sh
+pip uninstall pypipeline
+```
+
+---
+
+
 ## Training Pipeline
 
 <div align="center">
@@ -608,7 +652,6 @@ python hourly_pred_pipeline/pred.py
 ## Frontend
 
 A **Streamlit** dashboard (`frontend/app.py`) provides a visual interface for AQI predictions:
-- **City selector** — choose from configured stations
 - **Horizon slider** — select forecast horizon (1–24h)
 - **AQI metric display** — shows the predicted value
 - **Trend chart** — visualizes prediction trends over time
@@ -642,24 +685,9 @@ terraform apply
 ```
 
 ---
+## CI/CD
 
-## Development (editable install)
 
-```sh
-pip install -e .
-```
-
-This exposes CLI entry points defined in `setup.cfg`:
-- `aqi-ingest`
-- `aqi-train`
-- `data_hourly_preprocessing`
-
-To undo:
-```sh
-pip uninstall pypipeline
-```
-
----
 
 ## Notebooks
 
