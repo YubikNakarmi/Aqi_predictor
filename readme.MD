@@ -15,6 +15,7 @@
 ![Terraform](https://img.shields.io/badge/Terraform-IaC-844FBA?logo=terraform&logoColor=white)
 
 [![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
+[![Push to Docker Hub](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml)
 
 [![CD to Azure](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml/badge.svg?branch=main)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml)
 
