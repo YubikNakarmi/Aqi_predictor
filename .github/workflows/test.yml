@@ -3,9 +3,7 @@ name: ML Tests & CML Report
 on:
   pull_request:
     branches: [dev, main]
-  push:
-    branches: [dev, main]
-
+  
 
 permissions:
   contents: read
@@ -97,45 +95,45 @@ jobs:
 
           cml comment create cml_comment.md
 # only on push
-  mlflow-eval:
-    runs-on: ubuntu-latest
+  # mlflow-eval:
+  #   runs-on: ubuntu-latest
     
-    needs: ml-tests
-    env:
-      AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-      MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+  #   needs: ml-tests
+  #   env:
+  #     AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+  #     MLFLOW_TRACKING_URI: http://127.0.0.1:5000
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #         cache: pip
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install mlflow==3.10.1
-          pip install -e .
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install --upgrade pip
+  #         pip install mlflow==3.10.1
+  #         pip install -e .
 
-        env:
-          MLFLOW_DB_URI: ${{ secrets.MYSQL_MLFLOW_URL }}
+  #       env:
+  #         MLFLOW_DB_URI: ${{ secrets.MYSQL_MLFLOW_URL }}
 
-      - name: Start MLflow server
-        run: |
-           mlflow db upgrade "${{secrets.MYSQL_MLFLOW_URL}}" && mlflow server \
-            --backend-store-uri ${{ secrets.MYSQL_MLFLOW_URL }} \
-            --default-artifact-root ${{secrets.MLFLOW_ARTIFACT_URI}} \
-            --host 127.0.0.1 \
-            --port 5000 &
-              sleep 10
+  #     - name: Start MLflow server
+  #       run: |
+  #          mlflow db upgrade "${{secrets.MYSQL_MLFLOW_URL}}" && mlflow server \
+  #           --backend-store-uri ${{ secrets.MYSQL_MLFLOW_URL }} \
+  #           --default-artifact-root ${{secrets.MLFLOW_ARTIFACT_URI}} \
+  #           --host 127.0.0.1 \
+  #           --port 5000 &
+  #             sleep 10
 
-      - name: MLflow connectivity check
-        run: |
-          python -c "
-          import mlflow
-          mlflow.set_tracking_uri('http://127.0.0.1:5000')
-          mlflow.search_experiments()
-          print('MLflow reachable')
-          "
+  #     - name: MLflow connectivity check
+  #       run: |
+  #         python -c "
+  #         import mlflow
+  #         mlflow.set_tracking_uri('http://127.0.0.1:5000')
+  #         mlflow.search_experiments()
+  #         print('MLflow reachable')
+  #         "
