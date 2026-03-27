@@ -2,7 +2,16 @@ name: "Push to Docker Hub"
 
 on:
   push:
-    branches: [main, dev,test]
+    branches: [main, dev]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/**'
+      - 'notebooks/**'
+      - '**.dvc'
+      - 'data/**'
+      - 'azure-deploy/**'
+  pull_request:
+    branches: [main, dev]  
 
 jobs:
   build:
