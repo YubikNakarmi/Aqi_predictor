@@ -116,7 +116,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install mlflow==3.10.1
           pip install -e .
 
         env:
