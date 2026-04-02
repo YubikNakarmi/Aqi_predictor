@@ -14,7 +14,9 @@ class DataCleaner:
                  input_df=None, 
                  small_gap=6, 
                  medium_gap=12, 
-                 very_large_gap=24):
+                 very_large_gap=24,
+                target_features:list[str]| None = None,
+                feature_upper_bounds: dict[str, float]| None = None):
         
         self.input_csv = input_csv
         self.output_csv = output_csv
@@ -22,6 +24,8 @@ class DataCleaner:
         self.small_gap = small_gap
         self.medium_gap = medium_gap
         self.very_large_gap = very_large_gap
+        self.target_features = target_features or ["pm25", "o3"]
+        self.feature_upper_bounds = feature_upper_bounds or {"pm25": 500}
         self.df_raw = None
         self.df_merged = None
         self.df_clean = None
@@ -51,8 +55,8 @@ class DataCleaner:
         logger.info("Loaded raw data with shape %s", self.df_raw.shape)
         return self.df_raw
     
-    def split(self,df:pd.DataFrame, test_size: float = 0.15, val_size: float = 0.15,train_size: float = 0.7):
-        ''' split data into train, validation and test sets based on time '''
+    ''' split data into train, validation and test sets based on time '''
+    def split(self,df:pd.DataFrame, val_size: float = 0.15,train_size: float = 0.7):
         n = len(df)
         train_end = int(n * train_size)
         val_end = int(n * (train_size + val_size))
@@ -64,28 +68,28 @@ class DataCleaner:
 
     @staticmethod
     def df_load_from_api(input_url: str) -> pd.DataFrame:
-        ''' work in progress, have not implemented full functionality yet '''
         response = requests.get(input_url)
         data = response.json()
         records = data['result']['records']
         df = pd.DataFrame.from_records(records)
         return df
 
+    ''' Extracts paramaters from a datafram with a "parameter" column and transofrming into a columns'''
     @staticmethod
     def extract_pm_o3(df: pd.DataFrame,extract_columns: list[str],exclude_columns: list[str],
                       rename: dict[str, str],parameter:str= "parameter", date:str = "date") -> pd.DataFrame:
         
         df_all = {}
 
-        for col in extract_columns:
+        for col in extract_columns: #loop though extraction list 
             if col not in df.columns:
                 raise ValueError(f"Column '{col}' not found in DataFrame.")
-            df_extract= df[df[parameter] == col].copy()
-            df_extract = df_extract.drop(columns=exclude_columns).rename(columns=rename).reset_index(drop=True)
-            df_all[col] = df_extract
+            df_extract= df[df[parameter] == col].copy() #filter to extract rows with parmeter
+            df_extract = df_extract.drop(columns=exclude_columns).rename(columns=rename).reset_index(drop=True) #drop exclude and rename
+            df_all[col] = df_extract 
 
         df_merged = None
-        for col, df_extract in df_all.items():
+        for col, df_extract in df_all.items(): #merge all the dataframes
             logger.info("Extracted %s with shape %s", col, df_extract.shape)
             df_merged = df_extract if df_merged is None else df_merged.merge(df_extract, on=date, how="outer")
 
@@ -116,21 +120,28 @@ class DataCleaner:
         # return df_merged
 
                 
-
+    ''' add target colums for forecasting and training data '''
     def add_target(self, df: pd.DataFrame,target:str = "pm25",horizon: int = 24) -> pd.DataFrame:
         logger.info("Adding target columns for horizon %s", horizon)
         df = df.copy()
         for h in range(1, horizon + 1):
             df[f"{target}_plus_{h}h"] = df[target].shift(-h)
         return df
+    
 
-    def clean_and_index(self, df: pd.DataFrame, target_features:list[str]=["pm25", "o3"], date_feature: str = "date") -> pd.DataFrame:
+    ''' clean and target data '''
+    def clean_and_index(self, df: pd.DataFrame, target_features:list[str]| None = None, date_feature: str = "date") -> pd.DataFrame:
         logger.info("Cleaning and indexing data")
         df = df.copy()
-        df.loc[df["pm25"] < 0, "pm25"] = pd.NA
-        df.loc[df["o3"] < 0, "o3"] = pd.NA
-        df.loc[df["pm25"] > 500, "pm25"] = pd.NA
-        
+        target_features = target_features or self.target_features
+
+        for feature in target_features:
+            if feature not in df.columns:
+                raise ValueError(f"Column '{feature}' not found in DataFrame.")
+            df.loc[df[feature] < 0, feature] = pd.NA
+            if feature in self.feature_upper_bounds:
+                df.loc[df[feature] > self.feature_upper_bounds[feature], feature] = pd.NA
+
         if date_feature in df.columns:
             df[date_feature] = pd.to_datetime(df[date_feature])
             df.set_index(date_feature, inplace=True)
@@ -143,7 +154,8 @@ class DataCleaner:
         df = df.asfreq("H")
         logger.info("Cleaned and indexed data with shape %s", df.shape)
         return df
-
+    
+    ''' add timne based features'''
     def add_time_features(self, df: pd.DataFrame, date_feature: str = "date") -> pd.DataFrame:
         logger.info("Adding time-based features")
         df = df.copy()
@@ -156,14 +168,20 @@ class DataCleaner:
         df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
         df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
         return df
-
-    def add_missing_flags(self, df: pd.DataFrame,features: list[str]) -> pd.DataFrame:
+    
+    '''add missing flags '''
+    def add_missing_flags(self, df: pd.DataFrame,features: list[str]| None = None) -> pd.DataFrame:
         logger.info("Adding missing-value flags")
         df = df.copy()
-        df["pm25_missing"] = df["pm25"].isna().astype(int)
-        df["o3_missing"] = df["o3"].isna().astype(int)
-        return df
+        features = features or self.target_features
 
+        for feature in features:
+            if feature not in df.columns:
+                raise ValueError(f"Column '{feature}' not found in DataFrame.")
+            df[f"{feature}_missing"] = df[feature].isna().astype(int)
+        return df
+    
+    ''' add gap leangth for feature imputation '''
     def add_gap_length(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Computing gap length features")
         df = df.copy()
@@ -176,6 +194,8 @@ class DataCleaner:
         logger.info("Gap length features added")
         return df
     
+
+    ''' impute missing values with differnt methos based on gap length '''
     def impute_values(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Imputing missing values")
         logger.info("NA counts before imputation:\n%s", df.isna().sum())
@@ -228,6 +248,8 @@ class DataCleaner:
         logger.info("Imputation complete")
         return df_imputation
 
+
+    ''' add segmentation on data gaps'''
     def add_segmentation(self, df_imputation: pd.DataFrame) -> pd.DataFrame:
         logger.info("Adding segment identifiers")
         df_imputation = df_imputation.copy()
@@ -241,7 +263,8 @@ class DataCleaner:
         df_imputation["segment_id"] = segment.cumsum()
         logger.info("Segmentation complete")
         return df_imputation
-
+    
+    ''' engineer feature for training and forecasting '''
     def engineer_features(self, df: pd.DataFrame, segment_col: str = "segment_id") -> pd.DataFrame:
         logger.info("Engineering features")
         df_engineering = df.copy()
@@ -289,6 +312,8 @@ class DataCleaner:
         df.to_csv(self.output_csv)
         logger.info("Saved processed file to: %s", self.output_csv)
 
+
+    ''' run full pipeline '''
     def run(self):
         logger.info("Starting full cleaning pipeline")
         self.load_raw()
