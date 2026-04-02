@@ -17,3 +17,4 @@ ec2.pem
 terraform.tfstate
 terraform.tfstate.backup
 tempCodeRunnerFile.py
+/testing

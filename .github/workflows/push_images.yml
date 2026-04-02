@@ -40,10 +40,11 @@ jobs:
       env:
         TAG: ${{ env.TAG }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_REPO: ${{ secrets.DOCKER_REPO }}
       run: |
         for dockerfile in docker/Dockerfile.*; do
           imagename=$(basename $dockerfile | tr '[:upper:]' '[:lower:]' | sed 's/dockerfile.//')
-          docker build -f $dockerfile -t $DOCKER_USERNAME/$imagename-$TAG .
-          docker push $DOCKER_USERNAME/$imagename-$TAG
+          docker build -f $dockerfile -t $DOCKER_REPO:$imagename-$TAG .
+          docker push $DOCKER_REPO:$imagename-$TAG
         done
         echo "Pushed images with tag:$imagename-$TAG"

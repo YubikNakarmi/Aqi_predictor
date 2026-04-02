@@ -72,25 +72,50 @@ class DataCleaner:
         return df
 
     @staticmethod
-    def extract_pm_o3(df: pd.DataFrame) -> pd.DataFrame:
-        df_pm25 = (
-            df[df["parameter"] == "pm25"]
-            .drop(columns=["locationId", "location", "parameter", 
-                           "unit", "utc", "country", "latitude", "longitude", "city"])
-            .rename(columns={"value": "pm25", "local": "date"})
-            .reset_index(drop=True)
-        )
-        df_o3 = (
-            df[df["parameter"] == "o3"]
-            .drop(columns=["locationId", "location", "parameter", 
-                           "unit", "utc", "country", "latitude", "longitude", "city"])
-            .rename(columns={"value": "o3", "local": "date"})
-            .reset_index(drop=True)
-        )
-        df_merged = df_pm25.merge(df_o3, on="date", how="outer").sort_values("date").reset_index(drop=True)
-        df_merged["pm25_target"] = df_merged["pm25"]
-        df_merged["o3_target"] = df_merged["o3"]
+    def extract_pm_o3(df: pd.DataFrame,extract_columns: list[str],exclude_columns: list[str],
+                      rename: dict[str, str],parameter:str= "parameter", date:str = "date") -> pd.DataFrame:
+        
+        df_all = {}
+
+        for col in extract_columns:
+            if col not in df.columns:
+                raise ValueError(f"Column '{col}' not found in DataFrame.")
+            df_extract= df[df[parameter] == col].copy()
+            df_extract = df_extract.drop(columns=exclude_columns).rename(columns=rename).reset_index(drop=True)
+            df_all[col] = df_extract
+
+        df_merged = None
+        for col, df_extract in df_all.items():
+            logger.info("Extracted %s with shape %s", col, df_extract.shape)
+            df_merged = df_extract if df_merged is None else df_merged.merge(df_extract, on=date, how="outer")
+
+        for col in extract_columns:
+            df_merged[f"{col}_target"] = df_merged[col]
+        logger.info("Merged extracted data with shape %s", df_merged.shape)
         return df_merged
+
+        ''' old code for hardcoded pm25/o3 extraction, will replace with more flexible version above '''
+        # df_pm25 = (
+        #     df[df["parameter"] == "pm25"]
+        #     .drop(columns=["locationId", "location", "parameter", 
+        #                    "unit", "utc", "country", "latitude", "longitude", "city"])
+        #     .rename(columns={"value": "pm25", "local": "date"})
+        #     .reset_index(drop=True)
+        # )
+        # df_o3 = (
+        #     df[df["parameter"] == "o3"]
+        #     .drop(columns=["locationId", "location", "parameter", 
+        #                    "unit", "utc", "country", "latitude", "longitude", "city"])
+        #     .rename(columns={"value": "o3", "local": "date"})
+        #     .reset_index(drop=True)
+        # )
+
+        # df_merged = df_pm25.merge(df_o3, on="date", how="outer").sort_values("date").reset_index(drop=True)
+        # df_merged["pm25_target"] = df_merged["pm25"]
+        # df_merged["o3_target"] = df_merged["o3"]
+        # return df_merged
+
+                
 
     def add_target(self, df: pd.DataFrame,target:str = "pm25",horizon: int = 24) -> pd.DataFrame:
         logger.info("Adding target columns for horizon %s", horizon)
@@ -99,15 +124,17 @@ class DataCleaner:
             df[f"{target}_plus_{h}h"] = df[target].shift(-h)
         return df
 
-    def clean_and_index(self, df: pd.DataFrame) -> pd.DataFrame:
+    def clean_and_index(self, df: pd.DataFrame, target_features:list[str]=["pm25", "o3"], date_feature: str = "date") -> pd.DataFrame:
         logger.info("Cleaning and indexing data")
         df = df.copy()
         df.loc[df["pm25"] < 0, "pm25"] = pd.NA
         df.loc[df["o3"] < 0, "o3"] = pd.NA
         df.loc[df["pm25"] > 500, "pm25"] = pd.NA
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-            df.set_index("date", inplace=True)
+        
+        if date_feature in df.columns:
+            df[date_feature] = pd.to_datetime(df[date_feature])
+            df.set_index(date_feature, inplace=True)
+
         elif not isinstance(df.index, pd.DatetimeIndex):
             raise ValueError("Data must have a 'date' column or a DatetimeIndex.")
         deltas = df.index.sort_values().diff().value_counts()
@@ -117,7 +144,7 @@ class DataCleaner:
         logger.info("Cleaned and indexed data with shape %s", df.shape)
         return df
 
-    def add_time_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def add_time_features(self, df: pd.DataFrame, date_feature: str = "date") -> pd.DataFrame:
         logger.info("Adding time-based features")
         df = df.copy()
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -130,7 +157,7 @@ class DataCleaner:
         df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
         return df
 
-    def add_missing_flags(self, df: pd.DataFrame) -> pd.DataFrame:
+    def add_missing_flags(self, df: pd.DataFrame,features: list[str]) -> pd.DataFrame:
         logger.info("Adding missing-value flags")
         df = df.copy()
         df["pm25_missing"] = df["pm25"].isna().astype(int)
