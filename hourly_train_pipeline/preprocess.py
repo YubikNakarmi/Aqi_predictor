@@ -1,11 +1,17 @@
 import pandas as pd
 import os
-from scripts.train_hourly import split,clean_and_target
-from modules.data_hourly_preprocessing import DataCleaner as clean
-from modules.logging_utils import setup_logging
 import datetime
 import yaml
 import json
+
+try:
+    from src.scripts.train_hourly import split, clean_and_target
+    from src.modules.data_hourly_preprocessing import DataCleaner as clean
+    from src.modules.logging_utils import setup_logging
+except ImportError:
+    from scripts.train_hourly import split, clean_and_target
+    from modules.data_hourly_preprocessing import DataCleaner as clean
+    from modules.logging_utils import setup_logging
 
 STATION = os.environ.get("STATION_NAME", "us_paro_hourly")
 DATA_PROCESSED_PATH = os.environ.get("DATA_PROCESSED_PATH", rf"data/processed/hourly/{STATION}/")
@@ -53,7 +59,7 @@ def main():
     
     df = pd.read_csv(DATA_RAW_PATH)
     logger.info("Raw data loaded from %s with shape %s", DATA_RAW_PATH, df.shape)
-    main_df_cleaned = clean().run_clean(df) # celeans and extracts datetime features
+    main_df_cleaned = clean(target_features=TARGET_COLS).run_clean(df, target_features=TARGET_COLS) # cleans and extracts datetime features
 
     # Split the data based on env ratios
     train_df, val_df, test_df = split(main_df_cleaned, train_size=TRAIN_SPLIT, val_size=VAL_SPLIT, test_size=TEST_SPLIT)

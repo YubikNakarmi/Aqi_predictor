@@ -2,13 +2,25 @@ import xgboost as xgb
 import pandas as pd
 import optuna
 import mlflow
-from optuna.integration import MLflowCallback
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
-from modules.data_hourly_preprocessing import DataCleaner as clean
-from modules.logging_utils import setup_logging
 import os
 from functools import partial
 from mlflow.models.signature import infer_signature
+
+try:
+    from optuna.integration import MLflowCallback
+except ModuleNotFoundError:
+    try:
+        from optuna_integration.mlflow import MLflowCallback
+    except ModuleNotFoundError:
+        MLflowCallback = None
+
+try:
+    from src.modules.data_hourly_preprocessing import DataCleaner as clean
+    from src.modules.logging_utils import setup_logging
+except ImportError:
+    from modules.data_hourly_preprocessing import DataCleaner as clean
+    from modules.logging_utils import setup_logging
 
 
 
@@ -23,14 +35,14 @@ def clean_and_target(horizon: int= 24,
                      test: pd.DataFrame = None, 
                      target_cols: list = None ):
     
-    # cleaning the data with feature engineering after splitting the data
-    train_df_cleaned = clean().run_feature_engineering(train)
-    val_df_cleaned = clean().run_feature_engineering(val)
-    test_df_cleaned = clean().run_feature_engineering(test)
-
-    # Default to pm25 and o3 if not specified
     if target_cols is None:
         target_cols = ["pm25", "o3"]
+
+    # cleaning the data with feature engineering after splitting the data
+    cleaner = clean(target_features=target_cols)
+    train_df_cleaned = cleaner.run_feature_engineering(train, target_features=target_cols)
+    val_df_cleaned = cleaner.run_feature_engineering(val, target_features=target_cols)
+    test_df_cleaned = cleaner.run_feature_engineering(test, target_features=target_cols)
     
     # creating targets horizons for specified targets using targets from df
     for targets in range(1,horizon+1):
@@ -150,7 +162,7 @@ def tune(df_train:pd.DataFrame=None,
          df_val:pd.DataFrame=None,
          trials:int=60,
          optuna_path:str="sqlite:///db/optuna.db",
-         callback:MLflowCallback=None,
+         callback=None,
          target_col:str="pm25", 
          value_range:tuple=(0,500), 
          horizons:int=24,
@@ -175,7 +187,8 @@ def tune(df_train:pd.DataFrame=None,
                  target_col=target_col, value_range=value_range)
     
     logger.info("Starting hyperparameter tuning...")
-    study.optimize(obj, n_trials=trials, callbacks=[callback])
+    callbacks = [callback] if callback is not None else None
+    study.optimize(obj, n_trials=trials, callbacks=callbacks)
 
     # save best params to json
     best_params = study.best_params
@@ -307,10 +320,11 @@ def main():#entry point for cli
     mlflow.set_tracking_uri(os.environ.get('MLFLOW_TRACKING_URI'))
 
     main_df = pd.read_csv(r"D:\pypipeline\data\raw\static\hourly\aqi\limited\us_diplomatic_post_hourly.csv") #load raw data
-    main_df_cleaned = clean().run_clean(main_df) #initial cleaning on main data, feature extraction
+    target_cols = ["pm25", "o3"]
+    main_df_cleaned = clean(target_features=target_cols).run_clean(main_df, target_features=target_cols) #initial cleaning on main data, feature extraction
     df_train, df_val, df_test = split(main_df_cleaned) #splliting after cleaning
 
-    df_train_cleaned, df_val_cleaned, df_test_cleaned = clean_and_target(train=df_train, val=df_val, test=df_test) #clean and create targets
+    df_train_cleaned, df_val_cleaned, df_test_cleaned = clean_and_target(train=df_train, val=df_val, test=df_test, target_cols=target_cols) #clean and create targets
    
 
     mlflow.set_experiment("Hourly_AQI_Tuning_Experiment")
