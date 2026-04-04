@@ -32,3 +32,4 @@ variable "ssh-key-path" {
     description = "Path to your SSH public key"
     type        = string
     default     = "" #-var="ssh_public_key=$SSH_PUBLIC_KEY"
+}

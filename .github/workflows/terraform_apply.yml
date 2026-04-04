@@ -1,0 +1,47 @@
+name: "Terraform Apply"
+on:
+    workflow_dispatch:
+        inputs:
+            action:
+                description: "Select action type"
+                required: true
+                default: "apply"
+                type: choice
+                options:
+                    - apply
+                    - destroy
+            confirm:
+                description: "Are you sure you want to proceed with this action?"
+                required: true
+                type: string
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    validate-input:
+        name: "Validate User Input"
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check word
+              run: |
+                if [[ "${{ github.event.inputs.confirm }}" != "yes" ]]; then
+                  echo "Action cancelled by user. or use lowercase 'yes' to confirm."
+                  exit 1
+                fi
+    authenticate-azure:
+        name: "Authenticate to Azure"
+        runs-on: ubuntu-latest
+        needs: validate-input
+        steps:
+            - name: Azure Login
+              uses: azure/login@v3
+              with:
+                client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    terraform-apply:
+        name: "Terraform Apply"
+        runs-on: ubuntu-latest
+        needs: authenticate-azure
