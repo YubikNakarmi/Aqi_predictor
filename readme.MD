@@ -696,8 +696,8 @@ Infrastructure-as-code for Azure is in `azure-deploy/` using Terraform:
 ```bash
 cd azure-deploy
 terraform init
-terraform plan
-terraform apply
+terraform plan 
+terraform apply var="public_key=${{public_key.pem }}"
 ```
 
 ---

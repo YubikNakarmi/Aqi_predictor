@@ -115,7 +115,7 @@ jobs:
                 path: azure-deploy/tfplan
 
             - name: Terraform Apply
-              run: terraform -chdir=azure-deploy apply -auto-approve
+              run: terraform -chdir=azure-deploy apply -var="public_key=${{secrets.AZURE_PUBLIC_KEY }}" -auto-approve #nneed public key
               env:
                 ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
                 ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}

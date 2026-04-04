@@ -23,13 +23,13 @@ variable "admin-name" {
 }
 
 variable "my-ip" {
-    description = "Your public IP address for NSG rule (CIDR format)"
+    description = "Public IP address for NSG rule (CIDR format)"
     type        = string
     default     = "0.0.0.0/0"
 }
 
-variable "ssh-key-path" {
-    description = "Path to your SSH public key"
+variable "public-key" {
+    description = "SSH public key"
     type        = string
     default     = "" #-var="ssh_public_key=$SSH_PUBLIC_KEY"
 }
