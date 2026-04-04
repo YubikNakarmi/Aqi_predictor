@@ -50,7 +50,7 @@ def main():
     
     dummy_df = pd.read_parquet(f"{DATA_PROCESSED_DIR}/train_processed.parquet")
 
-    with mlflow.start_run(run_name="hourly_aqi_model_serving"):
+    with mlflow.start_run(run_name=f"xgb_{TARGET_COL}_hourly_serving"):
         mlflow.pyfunc.log_model(
             artifact_path="model",
             python_model=ServeModel(),

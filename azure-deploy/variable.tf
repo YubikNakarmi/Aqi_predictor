@@ -27,3 +27,8 @@ variable "my-ip" {
     type        = string
     default     = "0.0.0.0/0"
 }
+
+variable "ssh-key-path" {
+    description = "Path to your SSH public key"
+    type        = string
+    default     = "" #-var="ssh_public_key=$SSH_PUBLIC_KEY"

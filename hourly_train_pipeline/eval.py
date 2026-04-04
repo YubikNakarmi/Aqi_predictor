@@ -1,5 +1,4 @@
 ''' NEEDS REFACTORING TO MAKE IT MORE MODULAR USING FUNCTIONS'''
-
 import os
 import datetime
 from datetime import timezone
@@ -77,7 +76,7 @@ def main():
         ''' horizon loop for each model evaluation and promotion '''
 
         for h in range(1, HORIZON + 1):
-            with mlflow.start_run(run_name=f"final_{TARGET_COL}_evaluation_{h}h"):
+            with mlflow.start_run(run_name=f"xgb_{TARGET_COL}_evaluation_{h}h"):
                 ''' load data and models'''
                 model_uri = f"models:/pm25_plus_{h}h_model/latest"#mlflow uri for model
                 model = mlflow.xgboost.load_model(model_uri)
