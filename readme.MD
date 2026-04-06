@@ -17,6 +17,7 @@
 [![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
 [![Push to Docker Hub Dev Branch](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml/badge.svg?branch=dev)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml)
 [![Push to Docker Hub Test Branch](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml/badge.svg?branch=test)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml)
+[![Terraform Apply](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/terraform_apply.yml/badge.svg?branch=main&event=workflow_dispatch)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/terraform_apply.yml)
 
 [![CD to Azure](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml/badge.svg?branch=main)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml)
 
