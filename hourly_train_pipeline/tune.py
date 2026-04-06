@@ -15,6 +15,7 @@ OPTUNA_PATH = os.getenv("OPTUNA_PATH", r"sqlite:///db/optuna.db")
 TRIALS = int(os.getenv("TRIALS", 60))
 ARTIFACTS_PATH = os.getenv("ARTIFACTS_PATH", "data/artifacts")
 os.environ["MLFLOW_HTTP_REQUEST_MAX_RETRIES"] = "0"
+TARGET_COL = os.getenv("TARGET_COL", "pm25")  # Default to pm25, can be "o3" or others  
 
 logger = setup_logging(__name__)
 
@@ -46,7 +47,7 @@ def main():
         train_df = pd.read_parquet(f"{DATA_PROCESSED_PATH}/train_processed.parquet")
         logger.info("Data loaded for tuning")
 
-        mlflow.set_experiment("xgb_aqi_hourly_tuning")
+        mlflow.set_experiment(f"xgb_{TARGET_COL}_hourly_tuning")
         best_params = tune(
             df_train=train_df,
             df_val=val_df,

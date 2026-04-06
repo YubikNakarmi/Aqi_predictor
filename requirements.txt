@@ -6,7 +6,7 @@ mlflow-skinny==3.5.0
 mlflow-tracing==3.5.0
 numpy
 optuna==4.6.0
-optuna-integration==4.6.0
+optuna-integration[mlflow]==4.6.0
 pandas==2.3.1
 requests==2.32.4
 scikit-learn==1.7.1

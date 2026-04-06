@@ -15,6 +15,9 @@
 ![Terraform](https://img.shields.io/badge/Terraform-IaC-844FBA?logo=terraform&logoColor=white)
 
 [![ML Tests & CML Report](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml/badge.svg)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/test.yml)
+[![Push to Docker Hub Dev Branch](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml/badge.svg?branch=dev)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml)
+[![Push to Docker Hub Test Branch](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml/badge.svg?branch=test)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/push_images.yml)
+[![Terraform Apply](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/terraform_apply.yml/badge.svg?branch=main&event=workflow_dispatch)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/terraform_apply.yml)
 
 [![CD to Azure](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml/badge.svg?branch=main)](https://github.com/YubikNakarmi/Aqi_predictor/actions/workflows/azure-deploy.yml)
 
@@ -370,6 +373,20 @@ docker compose --profile flower up flower      # Celery Flower monitoring
 
 The Docker setup uses MySQL for the backend store and Azure Blob Storage for artifacts. The tracking server is exposed at http://localhost:5000.
 
+### Experiments
+|experiment name|description|
+|---|---| 
+|`xgb_{TARGET_COL}_hourly_tuning`|Optuna tuning runs for each horizon (1–24h)|
+|`xgb_{TARGET_COL}_hourly_training`|Training runs for each horizon (1–24h)|
+|`xgb_{TARGET_COL}_hourly_evaluation`|Evaluation runs for each horizon (1–24h) and aggregate metrics|
+|`xgb_{TARGET_COL}_hourly_prediction`|Daily prediction runs with the latest serving model|
+|`xgb_{TARGET_COL}_hourly_serving `|Model registry entries for the composite `ServeModel`|
+
+TARGET_COL is set in `.env` (default `pm25`), so experiment names will be `xgb_pm25_hourly_tuning`, etc.
+## Models
+
+
+
 > [!TIP]
 > For local development, you can switch to a SQLite backend by changing `MYSQLURL` to a local `.sqlite` path and `MLFLOW_ARTIFACT_ROOT` to a local directory in `.env`.
 
@@ -680,8 +697,8 @@ Infrastructure-as-code for Azure is in `azure-deploy/` using Terraform:
 ```bash
 cd azure-deploy
 terraform init
-terraform plan
-terraform apply
+terraform plan 
+terraform apply var="public_key=${{public_key.pem }}"
 ```
 
 ---

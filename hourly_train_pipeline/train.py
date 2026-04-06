@@ -73,7 +73,7 @@ def main():
             if model is None:
                 continue
 
-            with mlflow.start_run(run_name=f"final_{TARGET_COL}_training_{h}h"):
+            with mlflow.start_run(run_name=f"xgb_{TARGET_COL}_training_{h}h"):
                 run_id = mlflow.active_run().info.run_id
                 mlflow.log_params(best_params)
                 mlflow.log_params({"type": "xgboost", "target": TARGET_COL})
