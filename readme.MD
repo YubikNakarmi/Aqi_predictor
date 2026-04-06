@@ -256,7 +256,7 @@ data/
 │   ├── daily/
 │   ├── hourly/
 │   └── pred_ingestion/
-└── raw/
+|└── raw/
     ├── dynamic/
     ├── pred_ingestion/
     └── static/
@@ -264,6 +264,7 @@ data/
         │   ├── aqi/
         │   └── weather/
         └── hourly/
+
 ```
 
 ### 4. Environment configuration
@@ -702,6 +703,13 @@ terraform apply var="public_key=${{public_key.pem }}"
 
 ---
 ## CI/CD
+### **GitHub Actions** workflows for:
+  - Linting and testing on push
+  - Docker image build and push on release
+  - Terraform plan and apply on main branch merge (with manual approval)
+  - Updating deployment in azure vm
+  - Ml tests and CML reports
+  - Pulling reposotiry updade from github to azure vm (CD)
 
 
 

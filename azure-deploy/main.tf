@@ -139,7 +139,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
     admin_ssh_key {
       username = var.admin-name
-      public_key =  var.ssh-key-path #using existing ssh key for authentication
+      public_key =  var.public-key #using existing ssh key for authentication
     }
     os_disk {
         caching = "ReadWrite"
