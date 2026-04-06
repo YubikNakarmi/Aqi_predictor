@@ -69,7 +69,8 @@ jobs:
            
 
             - name: Terraform Plan
-              run: terraform -chdir=azure-deploy plan -out=tfplan -var="public_key=${{secrets.SSH_PUBLIC_KEY }}" #nneed public key
+              run: terraform -chdir=azure-deploy plan -out=tfplan -var="public_key=${{secrets.SSH_PUBLIC_KEY }}" -var="my-ip=${{secrets.IP}}"
+       #nneed public key
             
             - name: Upload Terraform Plan
               uses: actions/upload-artifact@v3
