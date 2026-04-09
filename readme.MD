@@ -715,12 +715,27 @@ If you want to use OIDC instead of a client secret, you must create a federated 
 ---
 ## CI/CD
 ### **GitHub Actions** workflows for:
-  - Linting and testing on push
-  - Docker image build and push on release
-  - Terraform plan and apply on main branch merge (with manual approval)
-  - Updating deployment in azure vm
-  - Ml tests and CML reports
-  - Pulling reposotiry updade from github to azure vm (CD)
+
+#### Linting and testing on push
+Python lint checks with pyling on push and merge to main. Unit tests for data cleaning and model training modules.
+
+#### Docker image build and push on release
+ ![Docker_push](.github_utils/dockerpush.drawio.png)
+ Pushes latests images by tagging based on branch and commit SHA. Images are pushed to Docker Hub under `yubiknakarmi/aqi-prediction` and `yubiknakarmi/aqi-trainer`.
+
+#### Ml tests and CML reports
+ Ml tests runs on merge to main/dev and on pull request. It runs a subset of the training pipeline with a small sample of data to verify that the training process completes successfully and that metrics are within expected ranges. CML is used to generate reports with training metrics and plots, which are then posted as comments on the pull request for easy review. 
+  
+#### Pulling reposotiry updade from github to azure vm (CD)
+![CD](.github_utils/cd.png)
+Simple deployment workflow that pulls the latest repo from Main and runs a script in Azure VM to update the code and restart the docker compose services. 
+
+#### Terraform Apply Workflow
+![Pipeline Architecture](.github_utils/ci_cd(terraform).drawio.png)
+This workflow runs through manual trigger and asks for ainput to whether to apply the terraform plan or not. If the user approves, it applies the terraform configuration to provision infrastructure in Azure. This workflow requires the following secrets to be set in GitHub:
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `AZURE_CLIENT_ID`(service principal app ID)
 
 [!NOTE]
 > Terrafom Apply and CD into Azure VM couldn't be tested due to restrictions in Azure student account. These workflows expect an RBAC role with permissions to manage infrastructure and deploy to the VM. For local testing, you can comment out the Terraform and deployment steps in the workflow files.
