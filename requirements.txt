@@ -1,7 +1,7 @@
 click==8.1.7
 colorlog==6.8.2
 docker==7.1.0
-mlflow==3.5.0
+mlflow==3.10.1
 mlflow-skinny==3.5.0
 mlflow-tracing==3.5.0
 numpy

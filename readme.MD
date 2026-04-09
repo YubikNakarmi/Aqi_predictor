@@ -693,7 +693,15 @@ The dashboard is available at http://localhost:8501.
 Infrastructure-as-code for Azure is in `azure-deploy/` using Terraform:
 - **Resource group** and **Virtual Network** provisioning
 - Configured via `terraform.tfvars` and `variable.tf`
-- Uses Azure CLI for provider authentication
+- Uses Azure service principal secret authentication in GitHub Actions
+
+Required GitHub secrets for `terraform_apply.yml`:
+- `AZURE_CLIENT_ID`
+- `AZURE_CLIENT_SECRET`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `SSH_PUBLIC_KEY`
+- `IP`
 
 ```bash
 cd azure-deploy
@@ -701,6 +709,8 @@ terraform init
 terraform plan 
 terraform apply var="public_key=${{public_key.pem }}"
 ```
+
+If you want to use OIDC instead of a client secret, you must create a federated identity credential on the Azure app or managed identity first. Without that Azure-side setup, the GitHub Actions login step will fail with `AADSTS70025`.
 
 ---
 ## CI/CD
@@ -712,7 +722,8 @@ terraform apply var="public_key=${{public_key.pem }}"
   - Ml tests and CML reports
   - Pulling reposotiry updade from github to azure vm (CD)
 
-
+[!NOTE]
+> Terrafom Apply and CD into Azure VM couldn't be tested due to restrictions in Azure student account. These workflows expect an RBAC role with permissions to manage infrastructure and deploy to the VM. For local testing, you can comment out the Terraform and deployment steps in the workflow files.
 
 ## Notebooks
 
