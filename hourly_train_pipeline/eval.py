@@ -102,6 +102,22 @@ def main():
                 X = df_test.loc[test_mask].drop(features_exclude, axis=1).copy()
                 y = df_test.loc[test_mask, target_key]
 
+                model_feature_names = getattr(model, "feature_names", None)
+                if model_feature_names:
+                    missing_features = [name for name in model_feature_names if name not in X.columns]
+                    if missing_features:
+                        raise ValueError(
+                            f"Missing required model features for {target_key}: {missing_features}"
+                        )
+                    extra_features = [name for name in X.columns if name not in model_feature_names]
+                    if extra_features:
+                        logger.warning(
+                            "Dropping extra features not used by model for %s: %s",
+                            target_key,
+                            extra_features,
+                        )
+                    X = X.reindex(columns=model_feature_names)
+
                 ''' predictionss and evals'''
                 X_dmatrix = xgb.DMatrix(X)
                 y_pred = model.predict(X_dmatrix)
@@ -134,7 +150,7 @@ def main():
 
                 explainer = shap.Explainer(model, X_bg)
                 shap_values = explainer(X_explain)
-                tsI = datetime.datetime.fromisoformat(ts).strftime("%Y-%m-%dT%H:%M:%SZ")#convert iso fromat to timezeon
+                tsI = datetime.datetime.fromisoformat(ts).strftime("%Y-%m-%dT%H-%M-%SZ")
 
                 plt.figure()
                 bar = shap.plots.bar(shap_values, max_display=10,show=False)
@@ -313,6 +329,12 @@ def main():
                 "metrics_summary": {"avg_mae": avg_mae, "avg_rmse": avg_rmse},
                 "metrics_by_horizon": evaluation_metrics,
                 "promoted_models": promoted_models,
+                "save":{
+                        "saved_directory": predictions_out_dir,
+                        "saved_file": f"hourly_{TARGET_COL}_predictions.csv",
+                        "saved_type": "csv",
+                }
+
             },
         )
     except Exception as exc:
