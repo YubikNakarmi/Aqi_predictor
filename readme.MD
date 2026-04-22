@@ -727,7 +727,7 @@ Python lint checks with pyling on push and merge to main. Unit tests for data cl
  Ml tests runs on merge to main/dev and on pull request. It runs a subset of the training pipeline with a small sample of data to verify that the training process completes successfully and that metrics are within expected ranges. CML is used to generate reports with training metrics and plots, which are then posted as comments on the pull request for easy review. 
   
 #### Pulling reposotiry updade from github to azure vm (CD)
-![CD](.github_utils/cd.png)
+![CD](.github_utils/CD.png)
 Simple deployment workflow that pulls the latest repo from Main and runs a script in Azure VM to update the code and restart the docker compose services. 
 
 #### Terraform Apply Workflow
@@ -737,7 +737,7 @@ This workflow runs through manual trigger and asks for ainput to whether to appl
 - `AZURE_SUBSCRIPTION_ID`
 - `AZURE_CLIENT_ID`(service principal app ID)
 
-[!NOTE]
+> [!NOTE]
 > Terrafom Apply and CD into Azure VM couldn't be tested due to restrictions in Azure student account. These workflows expect an RBAC role with permissions to manage infrastructure and deploy to the VM. For local testing, you can comment out the Terraform and deployment steps in the workflow files.
 
 ## Notebooks
