@@ -1,1 +1,0 @@
-import scripts.ingestion_hourly as hourly
