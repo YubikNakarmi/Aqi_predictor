@@ -163,7 +163,7 @@ This project builds and operates a complete AQI forecasting system:
 |-----|----------|-------|-------------|
 | `aqi_pred_dag` | `@daily` | `fetch_data` → `preprocess_data` → `predict` | Ingests live data, preprocesses, and runs inference using the `aqi-prediction` Docker image |
 | `aqi_train_dag` | `@monthly` | `preprocess_data` → `tune_hyperparameters` → `train_model` → `evaluate_model` | Full retraining pipeline using the `aqi-trainer` Docker image |
-| `monitor_dag` | — | — | Placeholder for future monitoring tasks |
+| `monitor_dag` | @weekly |  | Placeholder for future monitoring tasks |
 
 > [!NOTE]
 > All tasks run as **DockerOperators**, mounting the host `data/` and `db/` directories into containers. Environment variables (API keys, MLflow URI, horizon, split ratios, target columns) are passed from the Airflow environment.
