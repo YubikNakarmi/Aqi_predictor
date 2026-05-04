@@ -71,10 +71,9 @@ This project builds and operates a complete AQI forecasting system:
 ---
 
 ## Architecture
-
 <div align="center">
 
-![Pipeline Architecture](.github_utils/pipeline-Page-1.drawio.png)
+![Pipeline Architecture](.github_utils/architecture.png)
 
 </div>
 
