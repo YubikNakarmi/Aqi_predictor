@@ -121,6 +121,8 @@ class DataCleaner:
         return df_merged
 
     def add_target(self, df: pd.DataFrame, target: str = "pm25", horizon: int = 24) -> pd.DataFrame:
+        """Add target columns for forecasting horizon, e.g., pm25_plus_1h, pm25_plus_2h, ..., pm25_plus_24h."""
+
         logger.info("Adding target columns for horizon %s", horizon)
         df = df.copy()
         for h in range(1, horizon + 1):
@@ -132,6 +134,9 @@ class DataCleaner:
                         target_features: list[str] | None = None,
                         feature_upper_bounds: dict[str, float] | None = None,
                         date_feature: str = "date") -> pd.DataFrame:
+        """Clean the data by handling negative values, applying upper bounds, converting date column to datetime, and setting it as index. Also logs the distribution of time deltas between records."""
+
+
         logger.info("Cleaning and indexing data")
         df = df.copy()
         target_features = target_features or self.target_features
@@ -158,6 +163,8 @@ class DataCleaner:
         return df
 
     def add_time_features(self, df: pd.DataFrame, date_feature: str = "date") -> pd.DataFrame:
+        """Add time-based features such as hour of day, day of week, is_weekend, is_night, and cyclic encoding of hour."""
+
         logger.info("Adding time-based features")
         df = df.copy()
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -171,6 +178,8 @@ class DataCleaner:
         return df
 
     def add_missing_flags(self, df: pd.DataFrame, features: list[str] | None = None) -> pd.DataFrame:
+        """Add binary flags indicating missing values for specified features."""
+
         logger.info("Adding missing-value flags")
         df = df.copy()
         features = features or self.target_features
@@ -182,6 +191,8 @@ class DataCleaner:
         return df
 
     def add_gap_length(self, df: pd.DataFrame, features: list[str] | None = None) -> pd.DataFrame:
+        """Add gap length features for specified features."""
+
         logger.info("Computing gap length features")
         df = df.copy()
         features = features or self.target_features
@@ -201,6 +212,8 @@ class DataCleaner:
                       df: pd.DataFrame,
                       features: list[str] | None = None,
                       cyclic_features: list[str] | None = None) -> pd.DataFrame:
+        """Impute missing values using a combination of time-based interpolation for small gaps and KNN imputation for medium gaps, while tagging imputation confidence based on gap length."""
+
         logger.info("Imputing missing values")
         logger.info("NA counts before imputation:\n%s", df.isna().sum())
         df_imputation = df.copy()
@@ -254,6 +267,8 @@ class DataCleaner:
         return df_imputation
 
     def add_segmentation(self, df_imputation: pd.DataFrame, features: list[str] | None = None) -> pd.DataFrame:
+        """Add segment identifiers to the DataFrame based on large gaps in the data, which can be used to prevent data leakage during feature engineering and modeling."""
+
         logger.info("Adding segment identifiers")
         df_imputation = df_imputation.copy()
         features = features or self.target_features
@@ -282,6 +297,8 @@ class DataCleaner:
                           windows: list[int] | None = None,
                           slope_windows: list[int] | None = None,
                           ratio_pairs: list[tuple[str, str]] | None = None) -> pd.DataFrame:
+        """Engineer features such as lag features, rolling window statistics, slope features, and ratio features, while ensuring that feature engineering is done separately within each segment to prevent data leakage."""
+
         logger.info("Engineering features")
         df_engineering = df.copy()
         target_features = target_features or self.target_features
@@ -329,6 +346,8 @@ class DataCleaner:
         return df_engineering
 
     def save_processed(self, df: pd.DataFrame):
+        """Save the processed DataFrame to a CSV file if output_csv is set, with error handling and logging."""
+
         if not self.output_csv:
             raise ValueError("output_csv must be set before saving.")
         os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
@@ -342,7 +361,8 @@ class DataCleaner:
                                 windows: list[int] | None = None,
                                 slope_windows: list[int] | None = None,
                                 ratio_pairs: list[tuple[str, str]] | None = None) -> pd.DataFrame:
-        """Assumes cleaned_df already has target feature columns and a datetime index."""
+        """Runs the feature engineering pipeline starting from a cleaned DataFrame, allowing for optional specification of target features, lag horizon, rolling windows, slope windows, and ratio pairs."""
+
         logger.info("Starting feature engineering pipeline")
         target_features = target_features or self.target_features
         self.df_clean = cleaned_df.copy()
@@ -371,12 +391,18 @@ class DataCleaner:
 
     ''' run full pipeline '''
     def run(self):
+       """Runs the full data preprocessing pipeline from loading raw data to saving engineered features, with logging at each step.""" 
+
+
         logger.info("Starting full cleaning pipeline")
         target_features = self.target_features
         self.load_raw()
         if "value" in self.df_raw.columns:
             neg_count = self.df_raw[self.df_raw["value"] < 0]["value"].count()
             logger.info("Negative value count: %s", neg_count)
+
+    
+
 
         self.df_merged = self.extract_pm_o3(self.df_raw, extract_columns=target_features)
         self.df_clean = self.clean_and_index(self.df_merged, target_features=target_features)
@@ -395,6 +421,8 @@ class DataCleaner:
                   target_features: list[str] | None = None,
                   feature_upper_bounds: dict[str, float] | None = None) -> pd.DataFrame:
         """Runs cleaning pipeline from raw dataframe input."""
+
+
         logger.info("Starting clean-only pipeline")
         target_features = target_features or self.target_features
         feature_upper_bounds = feature_upper_bounds or self.feature_upper_bounds
@@ -416,13 +444,4 @@ class DataCleaner:
         return self.df_clean
 
 
-def main():
-    input_csv = os.environ.get("INPUT_CSV")
-    output_csv = os.environ.get("OUTPUT_CSV")
-    cleaner = DataCleaner(input_csv=input_csv, output_csv=output_csv)
-    cleaner.run()
-
-
-if __name__ == "__main__":
-    main()
 
