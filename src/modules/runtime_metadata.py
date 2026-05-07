@@ -1,3 +1,5 @@
+"""Runtime metadata management for the AQI forecasting pipeline, including functions to load, update, and save metadata about pipeline runs, with support for handling datetime objects and maintaining a history of runs."""
+
 import json
 import os
 from datetime import datetime, timezone

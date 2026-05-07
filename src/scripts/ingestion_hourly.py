@@ -1,3 +1,5 @@
+"""Ingestion script for hourly data from OpenWeather API and AQI API, with CLI support and logging."""
+
 import pandas as pd
 import requests
 import os
@@ -21,9 +23,8 @@ logger = setup_logging(__name__)
 def save_data(data:pd.DataFrame,
               column:list[str] = DEFAULT_MERGED_COLUMNS,
               file_path:str = None)->pd.DataFrame:
-    #container directory
-    #file_path = r"D:\pypipeline\scripts\test.csv" #local directory
-
+    """Saving the merged AQI and weather data to a CSV file, with error handling and logging."""
+ 
     try:
         if os.path.exists(file_path):
             # Check if file is empty
@@ -51,6 +52,7 @@ def load_weather_data(api:str = OPEN_WEATHER_API_KEY,
     past = dt.datetime.now() - dt.timedelta(days=4) #to unix time conversion for api
     res_now = int(dt.datetime.timestamp(now))
     res_past = int(dt.datetime.timestamp(past))
+    """Loading weather data from OpenWeather API for the specified location and time range, with error handling and logging."""
     
     weather_url = (
         "https://history.openweathermap.org/data/2.5/history/city"
@@ -99,6 +101,7 @@ def load_aqi_data(
     lookback_hours: int | None = None,
     lookback_days: int = 4,
 ) -> pd.DataFrame:
+    """Loading AQI data from OpenWeather API for the specified location and time range, with error handling and logging."""
 
 
     now = dt.datetime.now()

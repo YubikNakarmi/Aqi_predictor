@@ -1,3 +1,5 @@
+"""Monitoring module for data drift, performance estimation, and visualization using the NannyML library."""
+
 import nannyml
 import pandas as pd
 import os

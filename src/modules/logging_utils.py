@@ -1,3 +1,5 @@
+"""Logging utilities for the AQI forecasting pipeline, including setup for colored console logging and environment variable configuration."""
+
 import logging
 import os
 from typing import Optional

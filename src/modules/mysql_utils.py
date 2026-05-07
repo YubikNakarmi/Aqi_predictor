@@ -1,3 +1,5 @@
+"""MySQL utilities for connecting to a MySQL database, creating tables, writing DataFrames, and executing queries, with error handling and logging."""
+
 from modules import logging_utils
 import pandas as pd
 from sqlalchemy import create_engine, text, Column, String, MetaData, Table

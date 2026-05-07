@@ -1,3 +1,6 @@
+"""Training script for hourly AQI prediction using XGBoost, with hyperparameter tuning via Optuna and MLflow tracking."""
+
+
 import xgboost as xgb
 import pandas as pd
 import optuna
@@ -60,6 +63,8 @@ def split(cleaned:pd.DataFrame,
           val_size:float = 0.15, 
           test_size:float = 0.15, 
           df:pd.DataFrame=None):
+    """Splitting the data into train, validation, and test sets based on time series order, 
+    ensuring no data leakage across segments."""
 
     #calculating the end of index based on number of samples and ratios
     train_end = int(len(cleaned) * train_size)
@@ -85,6 +90,7 @@ def split(cleaned:pd.DataFrame,
 
     return df_train, df_val, df_test
 
+@staticmethod
 def objective(trial, 
             df_train=None, 
             df_val=None,
@@ -95,6 +101,7 @@ def objective(trial,
             value_range:tuple=(0,500)):
     #Preparing data for 1 hour ahead prediction
     #Tuning hyperparamaters
+    """Objective function for optuna tuning"""
 
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 300, 800),
@@ -169,6 +176,8 @@ def tune(df_train:pd.DataFrame=None,
          features_exclude=[f"pm25_plus_{i}h" for i in range(1,25)] + \
                         [f"o3_plus_{i}h" for i in range(1,25)] + \
                         ["segment_id","imputation_confidence"])->dict:
+    """Hyperparameter tuning using Optuna, with MLflow tracking and support for callbacks (e.g., pruning)."""
+
     #only tuning 1 or 2 model with 24 horizon  or 1h, using validation set maE as metric
 
     logger.info("====================Starting Hyperparameter Tuning=================")
@@ -210,6 +219,8 @@ def train(horizons:int = 24,
                     ["segment_id","imputation_confidence"],
          target_col:str="pm25", 
          value_range:tuple=(0,500)):
+    """Main training function with xgboost, training separate models for each horizon and tracking validation metrics."""
+
     #training all models for 24 horizons using best params
     logger.info("====================Starting Model Training=================")
     if best_params is None:
@@ -289,6 +300,7 @@ def test(horizons:int = 24,
               [f"o3_plus_{i}h" for i in range(1,25)] + \
             ["segment_id","imputation_confidence"], df_test:pd.DataFrame=None, 
          target_col:str="pm25", value_range:tuple=(0,500)):
+    """Testing the trained models on the test set, calculating MAE for each horizon, and returning a dictionary of test metrics."""
     
 
     test_metrics = {}

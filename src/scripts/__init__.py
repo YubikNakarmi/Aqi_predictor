@@ -1,4 +1,4 @@
-"""scripts package"""
+"""scripts pacakages for running the ingestion and training scripts"""
 
 __all__ = ["ingestion_run","train_hourly"]
 
